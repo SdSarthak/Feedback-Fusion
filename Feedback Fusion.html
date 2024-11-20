@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Feedback Fusion</title>
+  <link rel="stylesheet" href = "style.css">
+    <script src="https://kit.fontawesome.com/13d91ddaa8.js" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="header">
+    <div class="container">
+        <nav>
+            <img src="Logo.png" class="logo">
+            <ul id="sidemenu">
+                <li><a href="#home">Home</a></li>
+                <li><a href="#hello">About</a></li>
+                <li><a href="#service">Services</a></li>
+                <li><a href="LogIn.html">Log In</a></li>
+                <i class="fa-solid fa-xmark" onclick="closemenu()"></i>
+            </ul>
+            <i class="fa-solid fa-bars" onclick="openmenu()"></i>
+        </nav>
+       
+ <!-- Hero Section -->
+  <section class="hero" id="home">
+    <h1>Unleash the Power of Feedback Fusion</h1>
+    <p>Revolutionizing customer feedback with real-time analysis, advanced sentiment classification, and comprehensive data visualization to drive actionable insights.</p>
+    <button class="cta-btn" onclick="window.location.href='#service'">Get Started</button>
+
+
+    <div class="animation-container">
+      <div class="rotating-cube"></div>
+    </div>
+  </section>
+   
+  <!-- Information Section -->
+   <section class="info-section">
+    <div class="info-card">
+      <img src="Ai Analysis.png" alt="AI Analysis Icon" class="icon-image">
+      <h3>AI-Driven Insights</h3>
+      <p>Experience the power of AI to interpret feedback instantly and accurately, enabling a better understanding of customer needs.</p>
+    </div>
+    <div class="info-card">
+      <img src="Real Time Monitoring.png" alt="Real-Tic:\Users\INFINIX\Downloads\Background.jpegme Monitoring Icon" class="icon-image">
+      <h3>Real-Time Monitoring</h3>
+      <p>Receive and analyze feedback in real-time to make data-driven decisions quickly and stay ahead in customer satisfaction.</p>
+    </div>
+    <div class="info-card">
+      <img src="Interactive Visualizations.png" alt="Data Visualization Icon" class="icon-image">
+      <h3>Interactive Visualizations</h3>
+      <p>View feedback trends and patterns with dynamic visualizations, designed to transform raw data into actionable insights.</p>
+    </div>
+  </section>
+
+   <!-- About Section -->
+   <section class="about-section" id="hello">
+    <h1>What is Feedback Fusion?</h1>
+    <p>
+      Feedback Fusion is a platform designed to revolutionize the way businesses analyze and interpret customer feedback. It leverages AI-powered tools to perform real-time feedback analysis, sentiment classification, and data visualization. The goal of Feedback Fusion is to provide businesses with deeper insights into customer sentiment, enabling data-driven decisions that enhance customer satisfaction and strategic planning.
+    </p>
+  </section>
+
+  <!-- Team Section -->
+  <section class="team-section">
+    <h2>Meet Our Team</h2>
+    <div class="team-cards">
+      <div class="team-card">
+        <img src="Sarthak.png" alt="Team Member 1">
+        <h3>Sarthak Doshi</h3>
+        <p>He is Third year B.Tech student with skills in Python, SQL, and ML. Project experience in data analysis and web development. Vice Chair of AITR ACM & former Data Science Intern at Sabudh.</p>
+      </div>
+      <div class="team-card">
+        <img src="Atishay.png" alt="Team Member 2">
+        <h3>Atishay Jain</h3>
+        <p>Chief Data Scientist</p>
+        <p>Jane specializes in sentiment analysis and ensures our algorithms deliver precise and actionable insights.</p>
+      </div>
+      <div class="team-card">
+        <img src="OM.png" alt="Team Member 3">
+        <h3>Om Chouksey</h3>
+        <p>He is a Third-year BTech student with a strong interest in UI/UX design and front-end development. He is skilled in HTML, CSS, and design tools, focusing on creating intuitive user experiences.</p>
+      </div>
+      <div class="team-card">
+        <img src="Uday.png" alt="Team Member 4">
+        <h3>Uday Vashishtha</h3>
+        <p>Lead Developer</p>
+        <p>Michael builds the core architecture and ensures seamless functionality across all platforms.</p>
+      </div>
+      <div class="team-card">
+        <img src="Shambhavi.png" alt="Team Member 5">
+        <h3>Shambhavi Bhadoria</h3>
+        <p>She is a Third-year BTech student from Indore, passionate about Python, SQL, and web development. She brings strong technical skills, organization, and teamwork to projects.</p>
+      </div>
+    </div>
+  </section>
+
+<!-- Header Section -->
+  <header class="header-section" id="service">
+    <h1>Our Services</h1>
+    <p>Empowering businesses with AI-driven insights for better customer understanding.</p>
+</header>
+
+<!-- Core Services List -->
+<section class="services">
+    <div class="service-card" id="service1">
+        <div class="card-front">
+            <i class="icon">🔍</i>
+            <h2>Sentiment Analysis</h2>
+        </div>
+        <div class="card-back">
+            <p>Analyze feedback with advanced AI to understand nuanced customer emotions.</p>
+        </div>
+    </div>
+    <div class="service-card" id="service2">
+        <div class="card-front">
+            <i class="icon">⚡</i>
+            <h2>Real-Time Feedback</h2>
+        </div>
+        <div class="card-back">
+            <p>Receive immediate insights that allow for quick response and adjustment.</p>
+        </div>
+    </div>
+    <div class="service-card" id="service3">
+        <div class="card-front">
+            <i class="icon">📊</i>
+            <h2>Data Visualization</h2>
+        </div>
+        <div class="card-back">
+            <p>Gain insights from interactive, visually appealing data representations.</p>
+        </div>
+    </div>
+    <div class="login-container">
+      <button class="login-button" onclick="window.location.href='LogIn.html'">Login</button>
+  </div>
+</section>
+
+<script src="script.js"></script>
+</body>
+</html>
