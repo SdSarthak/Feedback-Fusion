@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registration</title>
+    <link rel="stylesheet" href="Reg.css">
+  </head>
+  <body>
+    <section class="container">
+      <header>Registration Form</header>
+      <form action="#" class="form" id="Regform">
+        <div class="input-box">
+          <label>Full Name</label>
+          <input type="text" placeholder="Enter full name" required />
+        </div>
+        <div class="input-box">
+          <label>Email Address</label>
+          <input type="text" placeholder="Enter email address" required />
+        </div>
+        <div class="column">
+          <div class="input-box">
+            <label>Phone Number</label>
+            <input type="number" placeholder="Enter phone number" required />
+          </div>
+          <div class="input-box">
+            <label>Birth Date</label>
+            <input type="date" placeholder="Enter birth date" required />
+          </div>
+        </div>
+        <div class="gender-box">
+          <h3>Gender</h3>
+          <div class="gender-option">
+            <div class="gender">
+              <input type="radio" id="check-male" name="gender" checked />
+              <label for="check-male">male</label>
+            </div>
+            <div class="gender">
+              <input type="radio" id="check-female" name="gender" />
+              <label for="check-female">Female</label>
+            </div>
+            <div class="gender">
+              <input type="radio" id="check-other" name="gender" />
+              <label for="check-other">prefer not to say</label>
+            </div>
+          </div>
+        </div>
+        <div class="input-box address">
+          <label>Address</label>
+          <input type="text" placeholder="Enter street address" required />
+          <div class="column">
+            <div class="select-box">
+              <select>
+                <option hidden>Country</option>
+                <option value="China">China</option>
+                <option value="China">China</option>
+                <option value="India">India</option>
+                <option value="United States">United States</option>
+                <option value="Indonesia">Indonesia</option>
+                <option value="Pakistan">Pakistan</option>
+                <option value="Brazil">Brazil</option>
+                <option value="Nigeria">Nigeria</option>
+                <option value="Bangladesh">Bangladesh</option>
+                <option value="Russia">Russia</option>
+                <option value="Mexico">Mexico</option>
+                <option value="Japan">Japan</option>
+                <option value="Ethiopia">Ethiopia</option>
+                <option value="Philippines">Philippines</option>
+                <option value="Egypt">Egypt</option>
+                <option value="Vietnam">Vietnam</option>
+                <option value="DR Congo">DR Congo</option>
+                <option value="Turkey">Turkey</option>
+                <option value="Iran">Iran</option>
+                <option value="Germany">Germany</option>
+                <option value="Thailand">Thailand</option>
+              </select>
+            </div>
+            <input type="text" placeholder="Enter your city" required />
+          </div>
+          <div class="column">
+            <input type="text" placeholder="Enter your region" required />
+            <input type="number" placeholder="Enter postal code" required />
+          </div>
+        </div>
+        <button>Submit</button>
+        <!-- OR Sign In Separator -->
+        <div class="separator">
+          <span>OR Sign In</span>
+      </div>
+      </form>
+    </section>
+    <script src="Reg.js"></script>
+  </body>
+</html>
