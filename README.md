@@ -1,243 +1,279 @@
-# Feedback-Fusion: Empowering Better Decisions with Feedback Analysis 📊🔍
+# Feedback-Fusion
 
-## Overview
-Feedback-Fusion is a comprehensive feedback analysis platform that revolutionizes how organizations understand and utilize feedback from customers, employees, and stakeholders. By harnessing the power of sentiment analysis, natural language processing, and machine learning, this platform helps businesses gain deep insights into audience mindset, enabling informed, data-driven decision making for continuous improvement.
+Feedback analysis platform that turns raw feedback — YouTube comments, Amazon
+reviews, or an uploaded CSV/JSON of customer and employee responses — into
+sentiment breakdowns, keyword rankings, word clouds and summaries.
 
-## 🎯 Project Vision
-The vision of Feedback-Fusion is to transform how organizations process and understand feedback across multiple platforms and sources. Our goal is to help companies:
-- Gain deep insights into stakeholder sentiment and opinions
-- Make informed, data-driven decisions for business improvement
-- Understand customer satisfaction and employee engagement levels
-- Identify trends and patterns in feedback data
-- Improve products, services, and organizational culture
-
-## 🚀 Key Features
-
-### Multi-Platform Analysis
-- **YouTube Video Feedback Analysis**: Analyze YouTube video comments to understand viewer sentiment and engagement
-- **Amazon Product Review Analysis**: Process product reviews to gauge customer satisfaction and product performance
-- **Company Review Analysis**: Analyze feedback from employees and customers for organizational improvement
-- **E-commerce Platform Integration**: Flipkart and other marketplace review analysis
-
-### Advanced Analytics
-- **Sentiment Analysis**: Automatically classify feedback as positive, negative, or neutral with confidence scores
-- **Word Cloud Visualization**: Generate interactive word clouds highlighting key themes and common terms
-- **Emotion Detection**: Identify specific emotions (joy, anger, frustration, satisfaction) in feedback
-- **Trend Analysis**: Track sentiment changes over time and identify patterns
-- **Statistical Reporting**: Comprehensive analytics with charts, graphs, and statistical insights
-
-### AI-Powered Insights
-- **VADER Sentiment Analysis**: Advanced sentiment scoring with intensity measurements
-- **Text Summarization**: Automatic summarization of large feedback datasets
-- **Topic Modeling**: Identify main themes and topics in feedback collections
-- **Comparative Analysis**: Compare sentiment across different products, time periods, or demographics
-- **Predictive Analytics**: Forecast sentiment trends and customer satisfaction patterns
-
-## 📁 Project Structure
-- `Final.py` - Main Streamlit application with complete analysis pipeline (654 lines)
-- `Final.ipynb` - Jupyter notebook with detailed analysis and model development
-- `model-train.ipynb` - Machine learning model training and evaluation
-- `Vader Model.ipynb` - VADER sentiment analysis implementation
-- `webscrapYT.ipynb` - YouTube data scraping and preprocessing
-- `websracpforflipkart.ipynb` - Flipkart review scraping and analysis
-- `LogIn.html/css/js` - User authentication system
-- `Reg.html/css/js` - User registration interface
-- `Feedback Fusion.html` - Main web interface
-- `requirements.txt` - Python dependencies
-- `package.json` - Node.js dependencies for frontend components
-
-## 🛠️ Technology Stack
-
-### Backend & Analysis
-- **Python**: Core programming language
-- **Streamlit**: Interactive web application framework
-- **Pandas & NumPy**: Data manipulation and numerical computing
-- **NLTK & TextBlob**: Natural language processing
-- **VADER Sentiment**: Advanced sentiment analysis
-- **Scikit-learn**: Machine learning algorithms
-- **Matplotlib & Seaborn**: Data visualization
-
-### Frontend & UI
-- **HTML5/CSS3**: Modern web interface design
-- **JavaScript**: Interactive frontend functionality
-- **Bootstrap**: Responsive design framework
-- **Chart.js**: Interactive data visualization
-
-### Data Collection
-- **Web Scraping**: YouTube API, Amazon reviews, Flipkart data
-- **BeautifulSoup**: HTML parsing and data extraction
-- **Requests**: HTTP client for API interactions
-- **Selenium**: Dynamic content scraping (if needed)
-
-## 🔧 Installation & Setup
-
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd "Minor V sem"
-   ```
-
-2. **Install Python dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Install Node.js dependencies** (for frontend)
-   ```bash
-   npm install
-   ```
-
-4. **Run the Streamlit application**
-   ```bash
-   streamlit run Final.py
-   ```
-
-5. **Access the application**
-   - Open your browser to `http://localhost:8501`
-   - Navigate through the interactive interface
-
-## 📊 Services & Capabilities
-
-### 1. YouTube Video Analysis
-- **Comment Extraction**: Scrape comments from YouTube videos
-- **Sentiment Classification**: Analyze viewer sentiment and engagement
-- **Engagement Metrics**: Track likes, dislikes, comment sentiment distribution
-- **Trend Analysis**: Identify popular topics and viewer concerns
-- **Visualization**: Interactive charts showing sentiment over time
-
-### 2. Amazon Product Review Analysis
-- **Review Processing**: Extract and analyze product reviews
-- **Rating Correlation**: Compare sentiment with star ratings
-- **Feature Analysis**: Identify specific product features mentioned
-- **Competitor Comparison**: Benchmark sentiment against competing products
-- **Purchase Decision Insights**: Understand factors influencing buying decisions
-
-### 3. Company Feedback Analysis
-- **Employee Feedback**: Analyze internal employee satisfaction surveys
-- **Customer Reviews**: Process customer feedback and support tickets
-- **Brand Sentiment**: Monitor brand perception across platforms
-- **Improvement Recommendations**: Generate actionable insights for business improvement
-- **Executive Dashboards**: High-level analytics for management decision-making
-
-### 4. E-commerce Platform Analysis
-- **Multi-platform Support**: Flipkart, Amazon, and other marketplace analysis
-- **Product Performance**: Track product sentiment across different platforms
-- **Market Intelligence**: Understand market positioning and customer preferences
-- **Competitive Analysis**: Benchmark against competitors
-
-## 📈 Analytics & Reporting
-
-### Sentiment Metrics
-- **Overall Sentiment Score**: Aggregated sentiment with confidence intervals
-- **Sentiment Distribution**: Breakdown of positive, negative, neutral feedback
-- **Intensity Analysis**: Measure emotional intensity in feedback
-- **Temporal Trends**: Track sentiment changes over time
-- **Demographic Insights**: Sentiment analysis by user demographics (when available)
-
-### Visualization Features
-- **Interactive Dashboards**: Real-time analytics with drill-down capabilities
-- **Word Clouds**: Visual representation of most frequent terms
-- **Sentiment Timeline**: Time-series visualization of sentiment trends
-- **Comparative Charts**: Side-by-side analysis of different products/periods
-- **Statistical Reports**: Comprehensive PDF reports with key insights
-
-### AI-Powered Insights
-- **Automated Summaries**: Key findings and recommendations
-- **Anomaly Detection**: Identify unusual sentiment patterns
-- **Predictive Modeling**: Forecast future sentiment trends
-- **Topic Clustering**: Group similar feedback themes
-- **Priority Scoring**: Rank feedback by importance and urgency
-
-## 🎯 Impact & Benefits
-
-### For Businesses
-- **Improved Decision-Making**: Data-driven insights replace gut-feeling decisions
-- **Enhanced Customer Experience**: Identify and address customer pain points
-- **Product Development**: Guide product improvements based on customer feedback
-- **Market Positioning**: Understand competitive landscape and positioning
-- **Risk Management**: Early detection of potential reputation issues
-
-### For Organizations
-- **Employee Satisfaction**: Monitor and improve workplace satisfaction
-- **Operational Efficiency**: Identify process improvements from employee feedback
-- **Change Management**: Understand employee sentiment during organizational changes
-- **Training Needs**: Identify areas requiring additional training or support
-- **Cultural Assessment**: Measure and improve organizational culture
-
-### For Individuals
-- **Research Capabilities**: Academic and personal research on sentiment analysis
-- **Learning Platform**: Understand NLP and machine learning concepts
-- **Career Development**: Build expertise in data science and analytics
-- **Portfolio Projects**: Demonstrate technical skills to potential employers
-
-## 🤝 Team Members
-Based on the image files in the project:
-- **Sarthak** - Project Lead & Backend Development
-- **Atishay** - Machine Learning & Data Analysis
-- **Shambhavi** - Frontend Development & UI/UX
-- **Uday** - Data Collection & Web Scraping
-- **OM** - Testing & Quality Assurance
-
-## 🔮 Future Enhancements
-- **Real-time Analysis**: Live sentiment monitoring with alerts
-- **Mobile Application**: Native mobile app for on-the-go analysis
-- **API Integration**: RESTful API for third-party integrations
-- **Advanced ML Models**: BERT, GPT-based sentiment analysis
-- **Multi-language Support**: Analysis in multiple languages
-- **Social Media Integration**: Twitter, Facebook, Instagram analysis
-- **Voice Analysis**: Sentiment analysis of audio feedback
-- **Blockchain Integration**: Secure, immutable feedback storage
-
-## 📝 Usage Examples
-
-### Analyzing YouTube Comments
-```python
-# Example usage in Final.py
-youtube_analyzer = YouTubeAnalyzer()
-comments = youtube_analyzer.extract_comments(video_url)
-sentiment_results = youtube_analyzer.analyze_sentiment(comments)
-visualizations = youtube_analyzer.create_visualizations(sentiment_results)
-```
-
-### Processing Amazon Reviews
-```python
-# Example usage
-amazon_analyzer = AmazonAnalyzer()
-reviews = amazon_analyzer.scrape_reviews(product_url)
-sentiment_analysis = amazon_analyzer.process_sentiment(reviews)
-insights = amazon_analyzer.generate_insights(sentiment_analysis)
-```
-
-## 📊 Performance Metrics
-- **Processing Speed**: Handle 10,000+ reviews in under 5 minutes
-- **Accuracy**: 85-90% sentiment classification accuracy
-- **Scalability**: Support for concurrent user sessions
-- **Reliability**: 99.5% uptime with robust error handling
-- **User Experience**: Intuitive interface with minimal learning curve
-
-## 🛡️ Security & Privacy
-- **Data Protection**: Secure handling of user data and feedback
-- **Privacy Compliance**: GDPR and privacy regulation compliance
-- **Authentication**: Secure login and user management
-- **Access Control**: Role-based access to sensitive analytics
-- **Data Anonymization**: Protect user privacy in analysis
-
-## 📞 Support & Documentation
-- **User Manual**: Comprehensive guide for all features
-- **API Documentation**: Technical documentation for developers
-- **Tutorial Videos**: Step-by-step usage tutorials
-- **FAQ Section**: Common questions and troubleshooting
-- **Community Forum**: User community for discussions and help
-
-## 📄 License
-MIT License - Open source project encouraging collaboration and innovation
-
-## 🏆 Achievements
-- **Academic Excellence**: Minor project for V semester computer science
-- **Innovation Award**: Recognition for creative approach to feedback analysis
-- **Industry Impact**: Practical application in real business scenarios
-- **Technical Depth**: Comprehensive implementation of modern NLP techniques
+Built as a V-semester minor project by CSDS 2026, Acropolis Institute of
+Technology and Research.
 
 ---
 
-**Feedback-Fusion** - Transforming feedback into actionable insights for better business decisions and improved stakeholder satisfaction.
+## What it actually does
+
+| Capability | Status | Notes |
+|---|---|---|
+| VADER sentiment classification (positive / negative / neutral + scores) | Working | Core of the platform |
+| Aggregate stats (counts, percentages, mean compound, overall label) | Working | |
+| TF-IDF keyword extraction | Working | |
+| Word clouds | Working | |
+| CSV / JSON feedback upload with per-category breakdown | Working | Flexible column naming |
+| YouTube comment analysis | Working | Needs a YouTube Data API v3 key |
+| Extractive summarisation | Working | Pure Python, no model download |
+| Abstractive summarisation | Optional | Needs `requirements-ml.txt` |
+| Amazon review scraping | Best-effort | Amazon actively blocks bots; see below |
+| MongoDB persistence | Optional | App degrades gracefully if unavailable |
+| Firebase email/password auth | Working | Static frontend pages |
+| Command-line interface | Working | `python -m feedback_fusion` |
+
+Things the earlier README advertised that are **not** implemented: emotion
+detection, topic modelling, predictive/trend forecasting, anomaly detection,
+PDF report export, multi-language analysis and social-media integrations.
+
+---
+
+## Quick start
+
+```bash
+git clone https://github.com/SdSarthak/Feedback-Fusion
+cd Feedback-Fusion
+
+python -m venv venv
+venv\Scripts\activate        # Windows
+# source venv/bin/activate   # macOS / Linux
+
+pip install -r requirements.txt
+
+cp .env.example .env         # then edit .env
+streamlit run Final.py
+```
+
+The app opens at <http://localhost:8501>.
+
+You can try it immediately without any API keys: open the **Company Review**
+page and upload `data/sample_feedback.csv`.
+
+### Optional extras
+
+```bash
+pip install -r requirements-ml.txt        # neural summarisation (transformers + torch)
+pip install -r requirements-scraping.txt  # Amazon scraping (selenium + chrome)
+pip install -r requirements-dev.txt       # pytest
+```
+
+Without the ML extras the app still summarises, using a frequency-based
+extractive summariser instead of a transformer model.
+
+---
+
+## Configuration
+
+All configuration is read from the environment, with `.env` support. Copy
+`.env.example` to `.env` and fill it in. **`.env` is gitignored — never commit
+real credentials.**
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `YOUTUBE_API_KEY` | *(empty)* | YouTube Data API v3 key. Required for the YouTube page. |
+| `MONGO_URI` | `mongodb://localhost:27017/` | MongoDB connection string. |
+| `MONGO_DB` | `feedback_fusion` | Database name. |
+| `STORAGE_ENABLED` | `true` | Set `false` to skip persistence entirely. |
+| `MAX_COMMENTS` | `500` | Cap on comments/reviews fetched per run. |
+| `POSITIVE_THRESHOLD` | `0.05` | VADER compound score above which feedback is positive. |
+| `NEGATIVE_THRESHOLD` | `-0.05` | Compound score below which feedback is negative. |
+| `SUMMARIZER_MODEL` | `sshleifer/distilbart-cnn-12-6` | HuggingFace summarisation model. |
+| `SUMMARY_MAX_CHARS` | `3000` | Input truncation limit for the summariser. |
+| `CHROME_HEADLESS` | `true` | Run the scraper's Chrome headless. |
+| `SCRAPE_MAX_PAGES` | `5` | Review pages to walk before stopping. |
+
+Getting a YouTube key: [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+→ create an API key → enable **YouTube Data API v3** for the project.
+
+MongoDB is entirely optional. If `mongod` is not running the analysis still
+completes and the UI notes that results were not persisted.
+
+---
+
+## Usage
+
+### Streamlit app
+
+```bash
+streamlit run Final.py
+```
+
+Three analysis pages:
+
+- **YouTube Video** — paste any video URL (`watch?v=`, `youtu.be/`, `/shorts/`,
+  `/embed/`, `/live/`) or a bare video ID.
+- **Amazon Product** — paste a product URL. Requires the scraping extras.
+- **Company Review** — upload a CSV or JSON file.
+
+Each page produces headline metrics, a sentiment distribution chart, a score
+histogram, a word cloud, TF-IDF keywords, a results table with CSV download,
+and a summary.
+
+### Command line
+
+```bash
+# Analyse a feedback file
+python -m feedback_fusion data/sample_feedback.csv
+
+# Include a summary, skip MongoDB
+python -m feedback_fusion data/sample_feedback.csv --summary --no-store
+
+# Machine-readable output
+python -m feedback_fusion data/sample_feedback.csv --json
+
+# Analyse a YouTube video (needs YOUTUBE_API_KEY)
+python -m feedback_fusion --youtube https://youtu.be/VIDEO_ID
+```
+
+### As a library
+
+```python
+from feedback_fusion import analyze_many, summarize_scores, top_keywords
+
+results = analyze_many(["I love this!", "Terrible experience.", "It arrived."])
+for r in results:
+    print(r.sentiment, round(r.compound, 3), r.text)
+
+print(summarize_scores(results))
+# {'total': 3, 'counts': {'Positive': 1, 'Negative': 1, 'Neutral': 1}, ...}
+
+print(top_keywords(["battery life is great", "battery drains fast"]))
+```
+
+```python
+from feedback_fusion import YouTubeAnalyzer, extract_video_id
+
+analyzer = YouTubeAnalyzer()                       # key from YOUTUBE_API_KEY
+video_id = extract_video_id("https://youtu.be/VIDEO_ID")
+payload = analyzer.analyze(video_id)
+
+print(payload["stats"])
+print(payload["keywords"])
+```
+
+```python
+from feedback_fusion.sources.files import load_feedback, analyze_frame
+
+frame, feedback_col, category_col = load_feedback("data/sample_feedback.csv")
+payload = analyze_frame(frame, feedback_col, category_col)
+print(payload["by_category"])
+```
+
+---
+
+## Feedback file format
+
+CSV or JSON. Column names are matched case-insensitively.
+
+- **Feedback column** (required): one of `feedback`, `review`, `comment`,
+  `text`, `response`, `message`.
+- **Category column** (optional): one of `category`, `type`, `source`, `group`,
+  `role`. When present, results are additionally broken down per category.
+- Any other columns are preserved and displayed but not required.
+
+```csv
+feedback,category,rating,date
+"Great place to work, very supportive.",Employee,5,2024-12-01
+"Customer service was slow, not happy.",Customer,2,2024-12-02
+```
+
+See `data/sample_feedback.csv` for a working 20-row example.
+
+---
+
+## Project structure
+
+```
+feedback_fusion/            Core package (all analysis logic)
+  config.py                 Environment-driven settings
+  sentiment.py              VADER analysis, aggregation, DataFrame export
+  text.py                   Cleaning, word clouds, TF-IDF keywords
+  summarization.py          Neural summariser + extractive fallback
+  storage.py                Best-effort MongoDB persistence
+  cli.py                    Command-line interface
+  sources/
+    youtube.py              YouTubeAnalyzer, URL parsing
+    amazon.py               AmazonAnalyzer, Selenium scraping
+    files.py                CSV/JSON loading and analysis
+Final.py                    Streamlit UI (presentation layer only)
+tests/                      pytest suite (100 tests)
+data/sample_feedback.csv    Sample data to try the app immediately
+Feedback Fusion.html        Marketing landing page
+LogIn.html/.css/.js         Firebase email/password sign in
+Reg.html/.css/.js           Firebase registration
+firebase-config.js          Firebase web config (public by design)
+notebooks/                  Original exploration notebooks
+```
+
+---
+
+## Tests
+
+```bash
+pip install -r requirements-dev.txt
+python -m pytest
+```
+
+100 tests covering sentiment classification and aggregation, text cleaning,
+keyword extraction, YouTube URL parsing, file loading and column resolution,
+config parsing, storage degradation, summarisation fallbacks and the CLI.
+
+Tests never hit the network: YouTube analysis is exercised by passing comments
+in directly, and the summariser is monkeypatched.
+
+---
+
+## Frontend
+
+The HTML pages are static — no build step, no `npm install` required. The
+Firebase modular SDK loads from the gstatic CDN.
+
+```bash
+npm start        # serves the folder at http://localhost:3000
+```
+
+For Firebase auth to work against your own project:
+
+1. Replace the values in `firebase-config.js` with your project's web config.
+2. Enable **Email/Password** under Authentication → Sign-in method.
+3. Add your domain under Authentication → Settings → Authorized domains.
+
+Firebase web API keys are safe to commit — they identify the project rather
+than granting access. Security comes from Authentication, Security Rules and
+the authorized-domain list. See
+[Firebase docs on API keys](https://firebase.google.com/docs/projects/api-keys).
+
+---
+
+## Known limitations
+
+- **Amazon scraping is unreliable.** Amazon serves bot-check pages to
+  automated traffic. The scraper sets a realistic user agent and bounds its
+  paging, but expect it to return nothing on many runs. For dependable
+  results, export reviews and use the Company Review upload page.
+- **VADER is lexicon-based.** It handles informal English, emoji and
+  intensifiers well, but not sarcasm, domain jargon or non-English text.
+- **Summarisation truncates.** Input is capped at `SUMMARY_MAX_CHARS`, so
+  summaries reflect the beginning of a large feedback set, not all of it.
+- **No user-scoped data.** Firebase auth gates the frontend pages, but the
+  Streamlit app has no per-user access control.
+
+---
+
+## Contributors
+
+CSDS 3rd Year, Acropolis Institute of Technology and Research, Batch 2026:
+
+- **Sarthak Doshi** — Project Lead
+- **Atishay Jain**
+- **Om Chouksey**
+- **Shambhavi Bhadoria**
+- **Uday Vashishtha**
+
+## License
+
+MIT
