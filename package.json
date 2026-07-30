@@ -1,4 +1,21 @@
 {
+  "name": "feedback-fusion",
+  "version": "1.0.0",
+  "description": "Static frontend (landing page, login and registration) for Feedback-Fusion.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "npx --yes serve . -l 3000",
+    "serve": "npx --yes serve . -l 3000"
+  },
+  "keywords": [
+    "sentiment-analysis",
+    "feedback",
+    "firebase",
+    "streamlit"
+  ],
+  "license": "MIT",
+  "comment": "The pages load the Firebase modular SDK from the gstatic CDN, so no bundler or npm install is required to run the frontend. The dependency below pins the SDK version those CDN URLs refer to.",
   "dependencies": {
     "firebase": "^11.0.1"
   }

@@ -1,0 +1,8 @@
+# Optional: Selenium-driven Amazon / Flipkart review scraping.
+# Requires a local Chrome or Chromium install.
+-r requirements.txt
+
+selenium>=4.15,<5
+webdriver-manager>=4.0,<5
+beautifulsoup4>=4.12,<5
+requests>=2.31,<3

@@ -1,0 +1,7 @@
+# Optional: neural abstractive summarization.
+# Without these, feedback_fusion.summarize falls back to a pure-Python
+# extractive summariser, so the app still works end to end.
+-r requirements.txt
+
+transformers>=4.37,<5
+torch>=2.1
