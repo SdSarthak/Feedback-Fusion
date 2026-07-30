@@ -11,32 +11,37 @@
 <body>
 
     <div class="wrapper">
-        <form action="">
+        <form id="LogIn">
             <h1>Login</h1>
 
             <div class="input-box">
-                <input type="text" placeholder="Username" required>
+                <input type="email" id="username" name="email" placeholder="Email address"
+                       autocomplete="email" required>
                 <i class="bx bxs-user"></i>
             </div>
-            
+
             <div class="input-box">
-                <input type="password" placeholder="Password" required>
+                <input type="password" id="password" name="password" placeholder="Password"
+                       autocomplete="current-password" required>
                 <i class="bx bxs-lock-alt"></i>
             </div>
 
             <div class="remember-forgot">
-                <label><input type="checkbox">Remember me</label>
+                <label><input type="checkbox" id="remember">Remember me</label>
                 <a href="#">Forgot password</a>
             </div>
 
+            <p id="errorMessage" class="error-message" role="alert" hidden></p>
+
             <button type="submit" class="btn">Login</button>
-            
 
             <div class="register-link">
-                <p>Dont't have an account? <a href="#">Register</a></p>
+                <p>Don't have an account? <a href="Reg.html">Register</a></p>
             </div>
 
         </form>
     </div>
 
-    <script></script>
+    <script type="module" src="LogIn.js"></script>
+</body>
+</html>

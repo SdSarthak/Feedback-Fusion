@@ -1,33 +1,71 @@
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+// Sign-in handling for LogIn.html.
+//
+// Uses the Firebase v9+ modular API. The previous version called
+// `auth.signInWithEmailAndPassword(...)` (the v8 namespaced API) on an
+// `auth` variable that was never defined, so every submit threw
+// "auth is not defined" before it ever reached Firebase.
 
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyADJSjkj9YZ24DtwLt_ZT9-DnbIBqHKDZ8",
-  authDomain: "feedback-fusion-985fc.firebaseapp.com",
-  projectId: "feedback-fusion-985fc",
-  storageBucket: "feedback-fusion-985fc.firebasestorage.app",
-  messagingSenderId: "706594682051",
-  appId: "1:706594682051:web:6242049b0593d6b0e91e76",
-  measurementId: "G-8EC69YBTC0"
-};
+import {
+  setPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence,
+  signInWithEmailAndPassword,
+} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
-document.getElementById("LogIn").onsubmit = async (event) => {
-  event.preventDefault();
-  const email = document.getElementById("username").value;
-  const password = document.getElementById("password").value;
-  
-  try {
-      const userCredential = await auth.signInWithEmailAndPassword(email, password);
-      window.location.href = "/dashboard"; // Redirect to a protected page
-  } catch (error) {
-      document.getElementById("errorMessage").innerText = error.message;
+import { auth, AFTER_AUTH_REDIRECT, friendlyAuthError } from "./firebase-config.js";
+
+const form = document.getElementById("LogIn");
+const errorMessage = document.getElementById("errorMessage");
+const submitButton = form?.querySelector("button[type='submit']");
+
+function showError(message) {
+  if (errorMessage) {
+    errorMessage.textContent = message;
+    errorMessage.hidden = false;
+  } else {
+    alert(message);
   }
-};
+}
+
+function clearError() {
+  if (errorMessage) {
+    errorMessage.textContent = "";
+    errorMessage.hidden = true;
+  }
+}
+
+form?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  clearError();
+
+  const email = document.getElementById("username").value.trim();
+  const password = document.getElementById("password").value;
+  const remember = document.getElementById("remember")?.checked;
+
+  if (!email || !password) {
+    showError("Please enter both an email address and a password.");
+    return;
+  }
+
+  if (submitButton) {
+    submitButton.disabled = true;
+    submitButton.textContent = "Signing in...";
+  }
+
+  try {
+    // "Remember me" decides whether the session survives a browser restart.
+    await setPersistence(
+      auth,
+      remember ? browserLocalPersistence : browserSessionPersistence
+    );
+    await signInWithEmailAndPassword(auth, email, password);
+    window.location.href = AFTER_AUTH_REDIRECT;
+  } catch (error) {
+    showError(friendlyAuthError(error));
+  } finally {
+    if (submitButton) {
+      submitButton.disabled = false;
+      submitButton.textContent = "Login";
+    }
+  }
+});

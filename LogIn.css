@@ -116,3 +116,23 @@ body{
     text-decoration: underline;
 }
     
+.error-message {
+    display: block;
+    margin: 12px 0 0;
+    padding: 10px 12px;
+    border-radius: 6px;
+    background: rgba(231, 76, 60, .15);
+    border: 1px solid rgba(231, 76, 60, .6);
+    color: #fff;
+    font-size: 14px;
+    text-align: center;
+}
+
+.error-message[hidden] {
+    display: none;
+}
+
+.wrapper .btn:disabled {
+    opacity: .65;
+    cursor: not-allowed;
+}

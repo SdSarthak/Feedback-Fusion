@@ -11,50 +11,65 @@
       <header>Registration Form</header>
       <form action="#" class="form" id="Regform">
         <div class="input-box">
-          <label>Full Name</label>
-          <input type="text" placeholder="Enter full name" required />
+          <label for="fullname">Full Name</label>
+          <input type="text" id="fullname" placeholder="Enter full name"
+                 autocomplete="name" required />
         </div>
         <div class="input-box">
-          <label>Email Address</label>
-          <input type="text" placeholder="Enter email address" required />
+          <label for="username">Email Address</label>
+          <input type="email" id="username" placeholder="Enter email address"
+                 autocomplete="email" required />
         </div>
         <div class="column">
           <div class="input-box">
-            <label>Phone Number</label>
-            <input type="number" placeholder="Enter phone number" required />
+            <label for="password">Password</label>
+            <input type="password" id="password" placeholder="At least 6 characters"
+                   autocomplete="new-password" minlength="6" required />
           </div>
           <div class="input-box">
-            <label>Birth Date</label>
-            <input type="date" placeholder="Enter birth date" required />
+            <label for="confirmPassword">Confirm Password</label>
+            <input type="password" id="confirmPassword" placeholder="Re-enter password"
+                   autocomplete="new-password" minlength="6" required />
+          </div>
+        </div>
+        <div class="column">
+          <div class="input-box">
+            <label for="phone">Phone Number</label>
+            <input type="tel" id="phone" placeholder="Enter phone number"
+                   autocomplete="tel" required />
+          </div>
+          <div class="input-box">
+            <label for="birthdate">Birth Date</label>
+            <input type="date" id="birthdate" required />
           </div>
         </div>
         <div class="gender-box">
           <h3>Gender</h3>
           <div class="gender-option">
             <div class="gender">
-              <input type="radio" id="check-male" name="gender" checked />
-              <label for="check-male">male</label>
+              <input type="radio" id="check-male" name="gender" value="Male" checked />
+              <label for="check-male">Male</label>
             </div>
             <div class="gender">
-              <input type="radio" id="check-female" name="gender" />
+              <input type="radio" id="check-female" name="gender" value="Female" />
               <label for="check-female">Female</label>
             </div>
             <div class="gender">
-              <input type="radio" id="check-other" name="gender" />
-              <label for="check-other">prefer not to say</label>
+              <input type="radio" id="check-other" name="gender" value="Prefer not to say" />
+              <label for="check-other">Prefer not to say</label>
             </div>
           </div>
         </div>
         <div class="input-box address">
-          <label>Address</label>
-          <input type="text" placeholder="Enter street address" required />
+          <label for="address">Address</label>
+          <input type="text" id="address" placeholder="Enter street address"
+                 autocomplete="street-address" required />
           <div class="column">
             <div class="select-box">
-              <select>
-                <option hidden>Country</option>
-                <option value="China">China</option>
-                <option value="China">China</option>
+              <select id="country" required>
+                <option hidden value="">Country</option>
                 <option value="India">India</option>
+                <option value="China">China</option>
                 <option value="United States">United States</option>
                 <option value="Indonesia">Indonesia</option>
                 <option value="Pakistan">Pakistan</option>
@@ -75,20 +90,24 @@
                 <option value="Thailand">Thailand</option>
               </select>
             </div>
-            <input type="text" placeholder="Enter your city" required />
+            <input type="text" id="city" placeholder="Enter your city" required />
           </div>
           <div class="column">
-            <input type="text" placeholder="Enter your region" required />
-            <input type="number" placeholder="Enter postal code" required />
+            <input type="text" id="region" placeholder="Enter your region" required />
+            <input type="text" id="postalcode" placeholder="Enter postal code"
+                   inputmode="numeric" required />
           </div>
         </div>
-        <button>Submit</button>
-        <!-- OR Sign In Separator -->
+
+        <p id="errorMessage" class="error-message" role="alert" hidden></p>
+
+        <button type="submit">Submit</button>
+
         <div class="separator">
-          <span>OR Sign In</span>
-      </div>
+          <span>Already have an account? <a href="LogIn.html">Sign In</a></span>
+        </div>
       </form>
     </section>
-    <script src="Reg.js"></script>
+    <script type="module" src="Reg.js"></script>
   </body>
 </html>

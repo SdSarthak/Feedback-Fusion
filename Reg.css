@@ -122,3 +122,34 @@ body {
     row-gap: 15px;
   }
 }
+
+.error-message {
+  display: block;
+  margin: 20px 0 0;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: rgba(231, 76, 60, .1);
+  border: 1px solid rgba(231, 76, 60, .6);
+  color: #c0392b;
+  font-size: 0.95rem;
+  text-align: center;
+}
+
+.error-message[hidden] {
+  display: none;
+}
+
+.form button:disabled {
+  opacity: .65;
+  cursor: not-allowed;
+}
+
+.separator a {
+  color: rgb(27, 129, 213);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.separator a:hover {
+  text-decoration: underline;
+}
