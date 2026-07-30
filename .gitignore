@@ -1,0 +1,46 @@
+# Environment / secrets
+.env
+.env.local
+*.pem
+*.key
+credentials.json
+serviceAccount*.json
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyc
+venv/
+env/
+.venv/
+minor-feedback-fusion/
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Node
+node_modules/
+dist/
+build/
+
+# Models & checkpoints
+*.h5
+*.pt
+*.pkl
+*.ckpt
+*.pth
+*.onnx
+
+# Data
+*.sqlite3
+*.db
+data/*.csv
+data/*.json
+!data/sample_feedback.csv
+!data/sample_feedback.json
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
