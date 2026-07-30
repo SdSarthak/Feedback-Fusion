@@ -1,654 +1,369 @@
+"""Feedback-Fusion Streamlit application.
+
+All analysis logic lives in the `feedback_fusion` package; this module is
+the presentation layer. Run with:
+
+    streamlit run Final.py
+"""
+
+import pandas as pd
+import plotly.express as px
 import streamlit as st
 
-# Main page layout with buttons
+from feedback_fusion import __version__, settings
+from feedback_fusion.config import ConfigError
+from feedback_fusion.sentiment import NEGATIVE, NEUTRAL, POSITIVE, to_dataframe
+from feedback_fusion.sources.amazon import AmazonAnalyzer, ScraperUnavailable
+from feedback_fusion.sources.files import FeedbackFileError, analyze_frame, load_feedback
+from feedback_fusion.sources.youtube import YouTubeAnalyzer, YouTubeError, extract_video_id
+from feedback_fusion.summarization import summarize
+
+ACCENT = "#00FFFF"
+
+SENTIMENT_COLORS = {POSITIVE: "#2ECC71", NEGATIVE: "#E74C3C", NEUTRAL: "#95A5A6"}
+
+st.set_page_config(page_title="Feedback-Fusion", page_icon="📊", layout="wide")
+
+
+def heading(text, level=2):
+    st.markdown(f"<h{level} style='color: {ACCENT};'>{text}</h{level}>", unsafe_allow_html=True)
+
+
+def go_to(page):
+    st.session_state.page = page
+    st.rerun()
+
+
+def back_button(key):
+    if st.button("← Return to Main Page", key=key):
+        go_to("main")
+
+
+# --------------------------------------------------------------------------
+# Shared rendering helpers
+# --------------------------------------------------------------------------
+
+def render_stats(stats):
+    """Show headline metrics for a batch of analysed feedback."""
+    counts = stats["counts"]
+    percentages = stats["percentages"]
+
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Total analysed", stats["total"])
+    col2.metric("Positive", counts[POSITIVE], f"{percentages[POSITIVE]}%")
+    col3.metric("Negative", counts[NEGATIVE], f"{percentages[NEGATIVE]}%")
+    col4.metric("Neutral", counts[NEUTRAL], f"{percentages[NEUTRAL]}%")
+
+    st.caption(
+        f"Overall sentiment: **{stats['overall']}** "
+        f"(mean compound score {stats['average_compound']})"
+    )
+
+
+def render_distribution(stats, title="Sentiment Distribution"):
+    counts = stats["counts"]
+    frame = pd.DataFrame({"Sentiment": list(counts), "Count": list(counts.values())})
+    figure = px.bar(
+        frame,
+        x="Sentiment",
+        y="Count",
+        title=title,
+        color="Sentiment",
+        color_discrete_map=SENTIMENT_COLORS,
+    )
+    st.plotly_chart(figure, use_container_width=True)
+
+
+def render_score_histogram(results):
+    if not results:
+        return
+    scores = [r.compound for r in results]
+    figure = px.histogram(
+        pd.DataFrame({"Sentiment Score": scores}),
+        x="Sentiment Score",
+        nbins=30,
+        title="Sentiment Score Distribution",
+    )
+    st.plotly_chart(figure, use_container_width=True)
+
+
+def render_word_cloud(texts):
+    """Render a word cloud, or explain why one could not be produced."""
+    from feedback_fusion.text import generate_word_cloud
+
+    cloud = generate_word_cloud(texts)
+    if cloud is None:
+        st.info("Not enough distinct words to build a word cloud.")
+        return
+    st.image(cloud.to_array(), use_container_width=True)
+
+
+def render_keywords(keywords):
+    if not keywords:
+        st.info("No keywords could be extracted.")
+        return
+    frame = pd.DataFrame(keywords, columns=["Keyword", "TF-IDF Score"])
+    st.dataframe(frame, use_container_width=True, hide_index=True)
+
+
+def render_storage(storage):
+    if storage is None:
+        return
+    if storage.stored:
+        st.caption(f"Saved {storage.count} records to MongoDB collection `{storage.collection}`.")
+    else:
+        st.caption(f"Results not persisted ({storage.reason}).")
+
+
+@st.cache_data(show_spinner=False)
+def cached_summary(texts):
+    """Cache summaries so a Streamlit rerun does not re-run the model."""
+    return summarize(texts)
+
+
+def render_summary(texts):
+    """Summarize once, cached. The old code ran the model twice per render."""
+    heading("Summary", level=3)
+    with st.spinner("Generating summary..."):
+        try:
+            text = cached_summary(tuple(texts))
+        except Exception as exc:
+            st.error(f"Could not generate a summary: {exc}")
+            return
+    if text:
+        st.success(text)
+    else:
+        st.info("Not enough text to summarise.")
+
+
+def render_analysis(payload, texts, text_field, summary=True):
+    """Render the standard analysis blocks shared by every source page."""
+    render_stats(payload["stats"])
+    render_storage(payload.get("storage"))
+
+    left, right = st.columns(2)
+    with left:
+        render_distribution(payload["stats"])
+    with right:
+        render_score_histogram(payload["results"])
+
+    heading("Word Cloud", level=3)
+    render_word_cloud(texts)
+
+    heading("Top Keywords (TF-IDF)", level=3)
+    render_keywords(payload["keywords"])
+
+    heading("Analysed Feedback", level=3)
+    frame = to_dataframe(payload["results"], text_field=text_field)
+    st.dataframe(frame.head(50), use_container_width=True, hide_index=True)
+    st.download_button(
+        "Download full results as CSV",
+        frame.to_csv(index=False).encode("utf-8"),
+        file_name=f"feedback_fusion_{text_field}_analysis.csv",
+        mime="text/csv",
+    )
+
+    if summary:
+        render_summary(texts)
+
+
+# --------------------------------------------------------------------------
+# Pages
+# --------------------------------------------------------------------------
+
 def main_page():
-     # Title of the page
-    # Title of the page with custom color
-    st.markdown("<h1 style='color: #00FFFF;'>Feedback-Fusion: Empowering Better Decisions with Feedback Analysis</h1>", unsafe_allow_html=True)
-    
-    # Vision of the Project with custom color
-    st.markdown("<h2 style='color: #00FFFF;'>Project Vision</h2>", unsafe_allow_html=True)
-    st.write("""
-    The vision of **Feedback-Fusion** is to revolutionize how organizations and businesses understand and utilize feedback from their customers, employees, and other stakeholders. 
-    By harnessing the power of sentiment analysis and feedback processing, our goal is to help companies gain deep insights into the mindset of their audiences, enabling them to make informed, data-driven decisions for continuous improvement.
-    """)
-    
-    # Services provided by the project with custom color
-    st.markdown("<h2 style='color: #00FFFF;'>Services We Provide</h2>", unsafe_allow_html=True)
-    st.write("""
-    **Feedback-Fusion** offers a range of services designed to analyze feedback in various forms, whether it's customer reviews, employee surveys, or product feedback:
-    - **YouTube Video Feedback Analysis**: Analyze YouTube video comments to gain insights into viewer sentiment.
-    - **Amazon Product Review Analysis**: Analyze product reviews from Amazon to gauge customer satisfaction and product performance.
-    - **Company Review Analysis**: Analyze feedback from both employees and customers within your company, enabling you to improve workplace satisfaction and customer experience.
-    - **Sentiment Analysis**: Automatically classify feedback as positive, negative, or neutral and generate insightful reports.
-    - **Word Cloud Visualization**: Generate word clouds to visualize the most common terms in the feedback, helping to highlight key themes.
-    - **Summarization**: Provide summaries of large sets of feedback for quick and easy understanding.
-    """)
-    
-    # Impact of the Project with custom color
-    st.markdown("<h2 style='color: #00FFFF;'>Impact of Feedback-Fusion</h2>", unsafe_allow_html=True)
-    st.write("""
-    The **Feedback-Fusion** platform is designed to have a transformative impact on businesses, organizations, and individuals:
-    - **Improved Decision-Making**: By understanding the sentiments of customers, employees, and stakeholders, organizations can make more informed decisions.
-    - **Better Customer Experience**: Analyzing customer feedback helps identify areas of improvement, allowing companies to enhance their offerings and services.
-    - **Employee Satisfaction**: Analyzing employee feedback ensures that companies can maintain a positive work environment and improve employee engagement.
-    - **Data-Driven Insights**: Feedback-Fusion empowers organizations to move from gut-feeling decisions to data-backed strategies, ultimately leading to better outcomes and growth.
-    """)
+    heading("Feedback-Fusion: Empowering Better Decisions with Feedback Analysis", level=1)
 
-    st.markdown("<h2 style='color: #00FFFF;'>Explore Our Services", unsafe_allow_html=True)
-    st.write("Choose a service to begin analyzing feedback:")
-    
-    # Button for YouTube Video
-    if st.button("YouTube Video"):
-        st.session_state.page = "youtube"
-        st.rerun()
+    heading("Project Vision")
+    st.write(
+        "The vision of **Feedback-Fusion** is to change how organisations understand and "
+        "use feedback from customers, employees and other stakeholders. By combining "
+        "sentiment analysis with keyword extraction and summarisation, the platform turns "
+        "large volumes of raw feedback into insights that support data-driven decisions."
+    )
 
+    heading("Services We Provide")
+    st.write(
+        """
+    - **YouTube Video Feedback Analysis**: analyse video comments to understand viewer sentiment.
+    - **Amazon Product Review Analysis**: gauge customer satisfaction and product performance.
+    - **Company Review Analysis**: upload employee and customer feedback as CSV or JSON.
+    - **Sentiment Analysis**: classify feedback as positive, negative or neutral with scores.
+    - **Word Cloud & Keywords**: surface the themes that dominate a feedback set.
+    - **Summarisation**: condense large feedback sets into a short readable summary.
+    """
+    )
 
-    # Button for Amazon Product
-    if st.button("Amazon Product"):
-        st.session_state.page = "amazon"
-        st.rerun()
+    heading("Explore Our Services")
+    st.write("Choose a service to begin analysing feedback:")
 
+    col1, col2, col3 = st.columns(3)
+    if col1.button("YouTube Video", use_container_width=True):
+        go_to("youtube")
+    if col2.button("Amazon Product", use_container_width=True):
+        go_to("amazon")
+    if col3.button("Company Review", use_container_width=True):
+        go_to("company")
 
-    # Button for Company Review
-    if st.button("Company Review"):
-        st.session_state.page = "company"
-        st.rerun()
-
-    # Project Contributors
-    # Project Contributors with custom color
-    st.markdown("<h2 style='color: #00FFFF;'>Contributors</h2>", unsafe_allow_html=True)
-    st.write("""
-    **Feedback-Fusion** is the result of the hard work and dedication of the following contributors from the **CSDS 3rd Year, Acropolis Institute of Technology and Research, Batch 2026**:
+    heading("Contributors")
+    st.write(
+        """
+    **Feedback-Fusion** is the result of the work of the following contributors from
+    **CSDS 3rd Year, Acropolis Institute of Technology and Research, Batch 2026**:
     - **Sarthak Doshi** (Project Lead)
-    - **Atishay Jain** 
+    - **Atishay Jain**
     - **Om Chouksey**
     - **Shambhavi Bhadoria**
     - **Uday Vashishtha**
-    
-    We thank each contributor for their valuable input, collaboration, and commitment to making this project a success.
-    """)
-    
-    # Contact Information with custom color
-    st.markdown("<h2 style='color: #00FFFF;'>Contact Us</h2>", unsafe_allow_html=True)
-    st.write("""
-    For more information, feedback, or collaboration inquiries, please contact us at:
-    - **Email**: sarthakdoshi231@gmail.com
-    - **Phone**: +91 7898770372
-    """)
+    """
+    )
 
-    # Footer Section with custom color
-    st.markdown("<h3 style='color: #FFFFFF;'>Feedback-Fusion | All rights reserved © 2024</h3>", unsafe_allow_html=True)    
+    st.markdown(
+        f"<h4 style='color: #FFFFFF;'>Feedback-Fusion v{__version__} | All rights reserved © 2024</h4>",
+        unsafe_allow_html=True,
+    )
 
 
-# YouTube Video Page
 def youtube_page():
-    import streamlit as st
-    st.markdown("<h2 style='color: #00FFFF;'>YouTube Video Feedback Analyzer", unsafe_allow_html=True)
-    st.write("This page will allow you to analyze feedback for YouTube videos.")
-    
-    import nltk
-    from nltk.sentiment import SentimentIntensityAnalyzer
-    import pandas as pd
-    import matplotlib.pyplot as plt
-    from pymongo import MongoClient
-    import googleapiclient.discovery
-    from urllib.parse import urlparse, parse_qs
-    import plotly.express as px
-    import plotly.graph_objects as go
-    from wordcloud import WordCloud
-    from nltk.corpus import stopwords
-    from sklearn.feature_extraction.text import TfidfVectorizer
-    from nltk.tokenize import word_tokenize
-    from transformers import pipeline
+    heading("YouTube Video Feedback Analyzer")
+    st.write("Analyse the comment section of any public YouTube video.")
 
-    # Ensure necessary NLTK data is downloaded
-    nltk.download('vader_lexicon')
-    nltk.download('stopwords')
+    if not settings.youtube_api_key:
+        st.warning(
+            "No YouTube API key configured. Copy `.env.example` to `.env` and set "
+            "`YOUTUBE_API_KEY` to a YouTube Data API v3 key."
+        )
 
-    # Initialize Sentiment Analyzer
-    sia = SentimentIntensityAnalyzer()
-
-    # MongoDB setup
-    client = MongoClient("mongodb://localhost:27017/")
-    db = client["feedback_fusion"]
-
-    # Define the YouTube API key here (predefined)
-    api_key = "AIzaSyC9rAzBhULMEtzaq5XeZVra-VKjk089x98 "  # Replace with your actual API key
-
-    # Function to extract comments using YouTube Data API
-    def extract_comments(video_id, api_key):
-        youtube = googleapiclient.discovery.build("youtube", "v3", developerKey=api_key)
-        comments = []
-
-        try:
-            request = youtube.commentThreads().list(
-                part="snippet",
-                videoId=video_id,
-                maxResults=100
-            )
-            response = request.execute()
-
-            for item in response.get("items", []):
-                comment = item["snippet"]["topLevelComment"]["snippet"]["textDisplay"]
-                comments.append(comment)
-
-            while "nextPageToken" in response:
-                request = youtube.commentThreads().list(
-                    part="snippet",
-                    videoId=video_id,
-                    pageToken=response["nextPageToken"],
-                    maxResults=100
-                )
-                response = request.execute()
-
-                for item in response.get("items", []):
-                    comment = item["snippet"]["topLevelComment"]["snippet"]["textDisplay"]
-                    comments.append(comment)
-
-        except Exception as e:
-            print(f"Error extracting comments: {e}")
-        
-        return comments
-
-    # Function to process comments and perform sentiment analysis
-    def process_comments(comments):
-        results = []
-        for comment in comments:
-            sentiment_score = sia.polarity_scores(comment)
-            sentiment = (
-                "Positive" if sentiment_score['compound'] > 0.05 else
-                "Negative" if sentiment_score['compound'] < -0.05 else
-                "Neutral"
-            )
-            results.append({
-                "comment": comment,
-                "sentiment": sentiment,
-                "scores": sentiment_score
-            })
-
-        return results
-
-    # Function to generate word cloud
-    def generate_word_cloud(comments):
-        stop_words = set(stopwords.words('english'))
-        all_comments = ' '.join(comments)
-        wordcloud = WordCloud(stopwords=stop_words, background_color='white', width=800, height=400).generate(all_comments)
-        return wordcloud
-
-    # Function to store results in MongoDB (creates a new collection based on video ID)
-    def store_results(results, video_id):
-        collection_name = f"comments_{video_id}"  # Dynamic collection name based on video ID
-        collection = db[collection_name]  # Create or access collection
-        collection.insert_many(results)
-
-    # Function to extract video ID from URL
-    def extract_video_id(url):
-        parsed_url = urlparse(url)
-        video_id = parse_qs(parsed_url.query).get("v")
-        return video_id[0] if video_id else None
-
-    def summarize_comments(comments):
-        # Combine all comments into a single text
-        combined_text = " ".join(comments)
-        
-        # Truncate text to prevent overloading the model
-        if len(combined_text) > 3000:
-            combined_text = combined_text[:3000]
-        
-        # Use a pre-trained Hugging Face summarization model on CPU
-        summarizer = pipeline("summarization", model="facebook/bart-large-cnn", device=-1)
-        
-        try:
-            # Generate summary
-            summary = summarizer(combined_text, max_length=1000, min_length=100, do_sample=False)
-            return summary[0]["summary_text"]
-        except Exception as e:
-            print(f"Error in summarization: {e}")
-            return "Error in generating summary. Please check your input or GPU configuration."
-
-
-    # Streamlit App Layout
-    # Input for YouTube video URL
-    video_url = st.text_input("Enter YouTube Video URL:")
+    video_url = st.text_input("YouTube video URL or ID:", placeholder="https://www.youtube.com/watch?v=...")
 
     if video_url:
         video_id = extract_video_id(video_url)
-        
-        if video_id:
-            comments = extract_comments(video_id, api_key)
-                
-            if comments:
-                processed_comments = process_comments(comments)
-                store_results(processed_comments, video_id)  # Store results in MongoDB
-                total_comments = len(comments)
-                st.metric("Total Comments", total_comments)
-                # Create sentiment distribution (Bar chart)
-                st.markdown("<h2 style='color: #00FFFF;'>Sentiment Distribution Graph",unsafe_allow_html=True)
-                sentiment_counts = pd.DataFrame(processed_comments)["sentiment"].value_counts()
-                sentiment_fig = px.bar(
-                    sentiment_counts, 
-                    x=sentiment_counts.index, 
-                    y=sentiment_counts.values, 
-                    labels={"x": "Sentiment", "y": "Number of Comments"},
-                    color=sentiment_counts.index
-                )
-                st.plotly_chart(sentiment_fig)
-                st.markdown("<h2 style='color: #00FFFF;'>Sentiment Score Distribution",unsafe_allow_html=True)
-                # Sentiment score distribution (Histogram)
-                sentiment_scores = pd.DataFrame(processed_comments)["scores"].apply(lambda x: x['compound'])
-                sentiment_hist_fig = px.histogram(
-                    sentiment_scores, 
-                    nbins=30, 
-                    labels={"value": "Sentiment Score"}
-                )
-                st.plotly_chart(sentiment_hist_fig)
-                st.markdown("<h2 style='color: #00FFFF;'>Word Cloud for Reviews",unsafe_allow_html=True)
-                # Word Cloud (Word frequency)
-                wordcloud = generate_word_cloud(comments)
-                st.image(wordcloud.to_array(), use_container_width=True)
-
-                # Display processed comments (first 10)
-                st.markdown("<h2 style='color: #00FFFF;'>Processed Comments (First 10)",unsafe_allow_html=True)
-                st.write(pd.DataFrame(processed_comments)[['comment', 'sentiment']].head(10))
-                    
-                summary = summarize_comments(comments)
-                
-                st.markdown("<h2 style='color: #00FFFF;'>Comments Summary",unsafe_allow_html=True)
-                with st.spinner("Generating summary..."):
-                    try:
-                        summary = summarize_comments(comments)
-                        st.success("Summary Generated!")
-                        st.write(summary)
-                    except Exception as e:
-                        st.error(f"Error in summarization: {e}")
-                
-            else:
-                st.warning("No comments found.")
+        if not video_id:
+            st.warning("That does not look like a valid YouTube URL or video ID.")
         else:
-            st.warning("Invalid YouTube video URL.")
-            
-    if st.button("Return to Main Page"):
-        st.session_state["page"] = "main"
-        st.rerun()
-
-# Amazon Product Page
-def amazon_page():
-    import streamlit as st
-    st.markdown("<h2 style='color: #00FFFF;'>Amazon Product Feedback Analyzer",unsafe_allow_html=True)
-    st.write("This page will allow you to analyze reviews for Amazon products.")
-    # You can place your existing Amazon product analysis code here
-    from selenium import webdriver
-    from selenium.webdriver.chrome.service import Service
-    from webdriver_manager.chrome import ChromeDriverManager
-    from selenium.webdriver.chrome.options import Options
-    import nltk
-    from nltk.sentiment import SentimentIntensityAnalyzer
-    import pandas as pd
-    import matplotlib.pyplot as plt
-    from pymongo import MongoClient
-    from selenium import webdriver
-    from selenium.webdriver.chrome.service import Service
-    from selenium.webdriver.chrome.options import Options
-    from selenium.webdriver.common.by import By
-    import time
-    from wordcloud import WordCloud
-    from transformers import pipeline
-    import streamlit as st
-    import plotly.express as px
-
-    nltk.download('vader_lexicon')
-    nltk.download('stopwords')
-
-    # Initialize Sentiment Analyzer
-    sia = SentimentIntensityAnalyzer()
-
-    # MongoDB setup
-    client = MongoClient("mongodb://localhost:27017/")
-    db = client["feedback_fusion"]
-
-    # Set up headless mode for Streamlit Cloud
-    def get_amazon_reviews_selenium(product_url):
-        # Set up Selenium WebDriver
-        chrome_options = Options()
-        chrome_options.add_argument("--headless")  # Run in headless mode
-        chrome_options.add_argument("--disable-gpu")
-        chrome_options.add_argument("--no-sandbox")
-        
-        # Path to chromedriver (make sure it's correct)
-        service = Service(ChromeDriverManager().install())  # Update with your path
-        
-        # Initialize WebDriver
-        driver = webdriver.Chrome(service=service, options=chrome_options)
-        driver.get('https://www.amazon.com')
-        try:
-            # Open the product URL
-            driver.get(product_url)
-            time.sleep(5)  # Wait for dynamic content to load
-            
-            # Extract product name
+            analyzer = YouTubeAnalyzer()
             try:
-                product_name = driver.find_element(By.ID, "productTitle").text.strip()
-            except Exception:
-                product_name = "Product title not found"
-            
-            # Extract reviews
-            reviews = []
-            while True:
-                review_elements = driver.find_elements(By.XPATH, "//span[@data-hook='review-body']")
-                reviews.extend([review.text.strip() for review in review_elements])
-
-                # Scroll down to load more reviews
-                driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-                time.sleep(2)
-
-                # Check if there's a "Next" button to load more reviews
-                next_button = driver.find_elements(By.XPATH, "//li[@class='a-last']/a")
-                if next_button:
-                    next_button[0].click()
-                    time.sleep(3)
+                with st.spinner(f"Fetching comments for `{video_id}`..."):
+                    payload = analyzer.analyze(video_id)
+            except ConfigError as exc:
+                st.error(str(exc))
+            except YouTubeError as exc:
+                st.error(
+                    f"{exc}\n\nComments may be disabled, or the API key may be invalid "
+                    "or out of quota."
+                )
+            else:
+                if payload["results"]:
+                    render_analysis(payload, payload["comments"], "comment")
                 else:
-                    break
+                    st.warning("No comments found for this video.")
 
-            return product_name, reviews
-        
-        finally:
-            # Quit the driver after scraping
-            driver.quit()
+    back_button("back_youtube")
 
-    # Function to process reviews and perform sentiment analysis
-    def process_reviews(reviews):
-        results = []
-        sentiment_counts = {"Positive": 0, "Negative": 0, "Neutral": 0}
 
-        for review in reviews:
-            sentiment_score = sia.polarity_scores(review)
-            sentiment = (
-                "Positive" if sentiment_score['compound'] > 0.05 else
-                "Negative" if sentiment_score['compound'] < -0.05 else
-                "Neutral"
-            )
-            results.append({
-                "review": review,
-                "sentiment": sentiment,
-                "scores": sentiment_score
-            })
+def amazon_page():
+    heading("Amazon Product Review Analyzer")
+    st.write("Analyse customer reviews from an Amazon product page.")
+    st.info(
+        "Scraping needs Chrome plus the optional extras: "
+        "`pip install -r requirements-scraping.txt`. Amazon actively blocks automated "
+        "traffic, so if scraping returns nothing use the Company Review page to upload "
+        "an exported review file instead."
+    )
 
-            sentiment_counts[sentiment] += 1
-
-        return results, sentiment_counts
-
-    # Function to generate word cloud
-    def generate_word_cloud(reviews):
-        stop_words = set(nltk.corpus.stopwords.words('english'))
-        all_reviews = ' '.join(reviews)
-        wordcloud = WordCloud(stopwords=stop_words, background_color='white', width=800, height=400).generate(all_reviews)
-        return wordcloud
-
-    # Function to store results in MongoDB (creates a new collection based on product name)
-    def store_results(results, product_name):
-        collection_name = f"reviews_{product_name.replace(' ', '_')}"  # Dynamic collection name based on product name
-        collection = db[collection_name]  # Create or access collection
-        collection.insert_many(results)
-
-    # Function to summarize reviews using Hugging Face summarization
-    def summarize_reviews(reviews):
-        # Combine all reviews into a single text
-        combined_text = " ".join(reviews)
-        
-        # Truncate text to prevent overloading the model
-        if len(combined_text) > 3000:
-            combined_text = combined_text[:3000]
-        
-        # Use a pre-trained Hugging Face summarization model on CPU
-        summarizer = pipeline("summarization", model="facebook/bart-large-cnn", device=-1)
-        
-        try:
-            # Generate summary
-            summary = summarizer(combined_text, max_length=1000, min_length=100, do_sample=False)
-            return summary[0]["summary_text"]
-        except Exception as e:
-            print(f"Error in summarization: {e}")
-            return "Error in generating summary. Please check your input or GPU configuration."
-
-    # Streamlit UI
-    st.title("Amazon Product Review Analyzer")
-    st.subheader("Enter the Amazon product URL below to analyze reviews:")
-
-    product_url = st.text_input("Product URL")
+    product_url = st.text_input("Amazon product URL:", placeholder="https://www.amazon.in/dp/...")
 
     if product_url:
-        st.write("Fetching reviews... Please wait.")
-        product_name, reviews = get_amazon_reviews_selenium(product_url)
-
-        if reviews:
-            # Process the reviews
-            processed_reviews, sentiment_counts = process_reviews(reviews)
-
-            # Store the results in MongoDB
-            store_results(processed_reviews, product_name)
-
-            # Display results
-            st.subheader(f"Sentiment Analysis Results for {product_name}")
-            
-            
-            st.metric("Total Comments", len(reviews))
-            # Sentiment Distribution Visualization (Bar chart)
-            st.subheader("Sentiment Distribution")
-            sentiment_df = pd.DataFrame(list(sentiment_counts.items()), columns=['Sentiment', 'Count'])
-            fig = px.bar(sentiment_df, x='Sentiment', y='Count', title="Sentiment Distribution of Reviews", color='Sentiment')
-            st.plotly_chart(fig)
-            
-            # Generate a word cloud
-            st.subheader("Word Cloud for Reviews")
-            wordcloud = generate_word_cloud(reviews)
-            st.image(wordcloud.to_array(), use_container_width=True)
-
-            # Show first 10 reviews in an organized table
-            st.subheader("First 10 Reviews")
-            reviews_df = pd.DataFrame(processed_reviews[:10])  # Display first 10 reviews
-            st.write(reviews_df[['review', 'sentiment']])
-            
-
-            # Summarize the reviews
-            st.subheader("Summary of Reviews")
-            summary = summarize_reviews(reviews)
-            st.write(summary)
-
-        
-
+        analyzer = AmazonAnalyzer()
+        try:
+            with st.spinner("Fetching reviews, this can take a minute..."):
+                payload = analyzer.analyze(product_url)
+        except ScraperUnavailable as exc:
+            st.error(str(exc))
+        except Exception as exc:
+            st.error(f"Scraping failed: {exc}")
         else:
-            st.write("No reviews found for this product.")
+            if payload["results"]:
+                st.subheader(payload["product_name"])
+                render_analysis(payload, payload["reviews"], "review")
+            else:
+                st.warning(
+                    "No reviews were found. Amazon may have served a bot-check page."
+                )
 
-            
-            
-    if st.button("Return to Main Page"):
-        st.session_state["page"] = "main"
-        st.rerun()
-            
-            
-# Company Review Page
+    back_button("back_amazon")
+
+
 def company_page():
-    import streamlit as st
-    st.markdown("<h2 style='color: #00FFFF;'>Company Review Analyzer",unsafe_allow_html=True)
-    st.write("This page will allow you to analyze company reviews from employees and customers.")
-    # You can place your existing Company review analysis code here
-    import pandas as pd
-    import nltk
-    from nltk.sentiment import SentimentIntensityAnalyzer
-    from wordcloud import WordCloud
-    import streamlit as st
-    import plotly.express as px
-    from sklearn.feature_extraction.text import TfidfVectorizer
-    import json
+    heading("Company Review Analyzer")
+    st.write("Upload employee or customer feedback and analyse it in one pass.")
 
-    # Ensure necessary NLTK data is downloaded
-    nltk.download('vader_lexicon')
-    nltk.download('stopwords')
+    with st.expander("File format requirements", expanded=False):
+        st.write(
+            """
+        Upload a **CSV** or **JSON** file containing feedback.
 
-    # Initialize Sentiment Analyzer
-    sia = SentimentIntensityAnalyzer()
+        - **Feedback column** (required): the feedback text. Name it `feedback`,
+          `review`, `comment`, `text`, `response` or `message`.
+        - **Category column** (optional): who the feedback came from, for example
+          `Customer` or `Employee`. Name it `category`, `type`, `source`, `group`
+          or `role`. When present, results are also broken down per category.
+        - Any other columns (rating, date, department) are preserved and shown
+          but not required.
 
-    # Function to load CSV or JSON feedback file
-    def load_feedback(file):
-        if file.name.endswith('.csv'):
-            df = pd.read_csv(file)
-        elif file.name.endswith('.json'):
-            df = pd.read_json(file)
-        else:
-            raise ValueError("File format not supported. Please upload a CSV or JSON file.")
-    
-        return df
+        **Example CSV**
 
-    # Function to process feedback and perform sentiment analysis
-    def process_feedback(feedbacks):
-        results = []
-        sentiment_counts = {"Positive": 0, "Negative": 0, "Neutral": 0}
-
-        for feedback in feedbacks:
-            sentiment_score = sia.polarity_scores(feedback)
-            sentiment = (
-                "Positive" if sentiment_score['compound'] > 0.05 else
-                "Negative" if sentiment_score['compound'] < -0.05 else
-                "Neutral"
-            )
-            results.append({
-                "feedback": feedback,
-                "sentiment": sentiment,
-                "scores": sentiment_score
-            })
-
-            sentiment_counts[sentiment] += 1
-
-        return results, sentiment_counts
-
-    # Function to generate word cloud
-    def generate_word_cloud(feedbacks):
-        stop_words = set(nltk.corpus.stopwords.words('english'))
-        all_feedbacks = ' '.join(feedbacks)
-        wordcloud = WordCloud(stopwords=stop_words, background_color='white', width=800, height=400).generate(all_feedbacks)
-        return wordcloud
-
-    # Function to generate a TF-IDF visualization for keyword extraction
-    def generate_tfidf_keywords(feedbacks):
-        vectorizer = TfidfVectorizer(stop_words='english', max_features=10)
-        tfidf_matrix = vectorizer.fit_transform(feedbacks)
-        feature_names = vectorizer.get_feature_names_out()
-        tfidf_scores = tfidf_matrix.sum(axis=0).A1
-        keyword_df = pd.DataFrame(list(zip(feature_names, tfidf_scores)), columns=["Keyword", "TF-IDF Score"])
-        keyword_df = keyword_df.sort_values(by="TF-IDF Score", ascending=False)
-        return keyword_df
-
-    # Streamlit UI
-    
-
-    st.subheader("Instructions for Uploading Feedback Files")
-    st.write("""
-        Please upload a CSV or JSON file containing feedback from both customers and employees.
-        
-        **File Format Requirements**:
-        1. The file should have at least two columns:
-            - **Feedback Column**: Contains the actual feedback text. You can name it `feedback`, `review`, or similar.
-            - **Category Column**: Specifies whether the feedback is from a `Customer` or an `Employee`. You can name it `category`, `type`, or similar.
-        
-        2. Optional Columns:
-            - **Rating**: A numeric rating (e.g., 1 to 5 or 1 to 10).
-            - **Date**: The date when the feedback was given.
-            - **Department**: For employee feedback, you may include a `department` column to specify which department the feedback is related to (e.g., `Sales`, `HR`).
-        
-        **Example CSV Format**:
-        | feedback                                | category   | rating | date       |
-        |-----------------------------------------|------------|--------|------------|
-        | "Great place to work, very supportive." | Employee   | 5      | 2024-12-01 |
-        | "Customer service was slow, not happy." | Customer   | 2      | 2024-12-02 |
-        | "I love the products and the team."     | Employee   | 4      | 2024-12-03 |
-        | "The product quality is excellent."     | Customer   | 5      | 2024-12-04 |
-        | "Need better management."               | Employee   | 3      | 2024-12-05 |
-        
-        **Example JSON Format**:
-        ```json
-        [
-        {"feedback": "Great place to work, very supportive.", "category": "Employee", "rating": 5, "date": "2024-12-01"},
-        {"feedback": "Customer service was slow, not happy.", "category": "Customer", "rating": 2, "date": "2024-12-02"},
-        {"feedback": "I love the products and the team.", "category": "Employee", "rating": 4, "date": "2024-12-03"},
-        {"feedback": "The product quality is excellent.", "category": "Customer", "rating": 5, "date": "2024-12-04"},
-        {"feedback": "Need better management.", "category": "Employee", "rating": 3, "date": "2024-12-05"}
-        ]
+        ```csv
+        feedback,category,rating,date
+        "Great place to work, very supportive.",Employee,5,2024-12-01
+        "Customer service was slow, not happy.",Customer,2,2024-12-02
         ```
-    """)
-    st.subheader("Upload your feedback data (CSV or JSON file):")
+        """
+        )
 
-    # File uploader for CSV or JSON
     uploaded_file = st.file_uploader("Choose a CSV or JSON file", type=["csv", "json"])
 
     if uploaded_file is not None:
         try:
-            # Load the uploaded feedback file
-            feedback_df = load_feedback(uploaded_file)
-            
-            # Display the first few rows of the dataset
-            st.subheader("Uploaded Feedback Data")
-            st.write(feedback_df.head())
+            frame, feedback_col, category_col = load_feedback(uploaded_file)
+        except FeedbackFileError as exc:
+            st.error(str(exc))
+        else:
+            st.caption(
+                f"Using `{feedback_col}` as the feedback column"
+                + (f" and `{category_col}` as the category column." if category_col else ".")
+            )
+            heading("Uploaded Data", level=3)
+            st.dataframe(frame.head(10), use_container_width=True)
 
-            # Process the feedbacks (assuming the column containing feedback text is named 'feedback')
-            feedbacks = feedback_df['feedback'].astype(str).tolist()
+            payload = analyze_frame(frame, feedback_col, category_col)
+            if not payload["results"]:
+                st.warning("No usable feedback text was found in that file.")
+            else:
+                render_analysis(payload, payload["texts"], "feedback")
 
-            # Process the feedback for sentiment analysis
-            processed_feedback, sentiment_counts = process_feedback(feedbacks)
+                if payload["by_category"]:
+                    heading("Sentiment by Category", level=3)
+                    for category, stats in payload["by_category"].items():
+                        st.markdown(f"**{category}**")
+                        render_stats(stats)
+                        render_distribution(stats, title=f"Sentiment Distribution — {category}")
 
-            # Display sentiment analysis results
-            st.markdown("<h2 style='color: #00FFFF;'>Sentiment Analysis Results",unsafe_allow_html=True)
-            st.write(f"Positive: {sentiment_counts['Positive']}")
-            st.write(f"Negative: {sentiment_counts['Negative']}")
-            st.write(f"Neutral: {sentiment_counts['Neutral']}")
+    back_button("back_company")
 
-            # Generate a word cloud
-            st.markdown("<h2 style='color: #00FFFF;'>Word Cloud for Feedback",unsafe_allow_html=True)
-            wordcloud = generate_word_cloud(feedbacks)
-            st.image(wordcloud.to_array(), use_container_width=True)
 
-            # Display TF-IDF keyword analysis
-            st.markdown("<h2 style='color: #00FFFF;'>Top Keywords Based on TF-IDF",unsafe_allow_html=True)
-            tfidf_keywords = generate_tfidf_keywords(feedbacks)
-            st.write(tfidf_keywords.head(10))  # Show top 10 keywords
+PAGES = {
+    "main": main_page,
+    "youtube": youtube_page,
+    "amazon": amazon_page,
+    "company": company_page,
+}
 
-            # Visualize sentiment distribution
-            sentiment_df = pd.DataFrame(list(sentiment_counts.items()), columns=['Sentiment', 'Count'])
-            fig = px.bar(sentiment_df, x='Sentiment', y='Count', title="Sentiment Distribution of Feedback", color='Sentiment')
-            st.plotly_chart(fig)
 
-            # Optionally: Separate feedback into Customer and Employee (assuming the file contains this information)
-            if 'category' in feedback_df.columns:
-                st.markdown("<h2 style='color: #00FFFF;'>Sentiment Analysis by Category",unsafe_allow_html=True)
-                categories = feedback_df['category'].unique()
-                for category in categories:
-                    category_feedbacks = feedback_df[feedback_df['category'] == category]['feedback'].astype(str).tolist()
-                    category_results, category_counts = process_feedback(category_feedbacks)
-                    st.write(f"Sentiment Analysis for {category} Feedback")
-                    st.write(f"Positive: {category_counts['Positive']}")
-                    st.write(f"Negative: {category_counts['Negative']}")
-                    st.write(f"Neutral: {category_counts['Neutral']}")
-                    category_df = pd.DataFrame(list(category_counts.items()), columns=['Sentiment', 'Count'])
-                    category_fig = px.bar(category_df, x='Sentiment', y='Count', title=f"Sentiment Distribution for {category}", color='Sentiment')
-                    st.plotly_chart(category_fig)
-                    
-        except Exception as e:
-            st.error(f"Error: {e}")
+def run():
+    if "page" not in st.session_state:
+        st.session_state.page = "main"
+    PAGES.get(st.session_state.page, main_page)()
 
-    if st.button("Return to Main Page"):
-        st.session_state["page"] = "main"
-        st.rerun()
-        
-        
-# Main execution block
-if 'page' not in st.session_state:
-    st.session_state.page = "main"
 
-if st.session_state.page == "main":
-    main_page()
-elif st.session_state.page == "youtube":
-    youtube_page()
-elif st.session_state.page == "amazon":
-    amazon_page()
-elif st.session_state.page == "company":
-    company_page()
+run()
