@@ -27,17 +27,22 @@ class AmazonAnalyzer:
         self.headless = settings.chrome_headless if headless is None else headless
         self.max_pages = max_pages or settings.scrape_max_pages
 
-    def _driver(self):
+    @staticmethod
+    def _selenium():
+        """Import selenium, converting a missing install into a clear error."""
         try:
             from selenium import webdriver
             from selenium.webdriver.chrome.options import Options
             from selenium.webdriver.chrome.service import Service
+            from selenium.webdriver.common.by import By
         except ImportError as exc:
             raise ScraperUnavailable(
                 "Selenium is not installed. Install the scraping extras with: "
                 "pip install -r requirements-scraping.txt"
             ) from exc
+        return webdriver, Options, Service, By
 
+    def _options(self, Options):
         options = Options()
         if self.headless:
             options.add_argument("--headless=new")
@@ -49,19 +54,48 @@ class AmazonAnalyzer:
             "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
             "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36"
         )
+        return options
 
-        try:
-            from webdriver_manager.chrome import ChromeDriverManager
+    def _driver(self):
+        webdriver, Options, Service, _ = self._selenium()
+        failures = []
 
-            service = Service(ChromeDriverManager().install())
-        except Exception:
-            # Fall back to a chromedriver already on PATH.
-            service = Service()
+        # Selenium Manager (built in since selenium 4.6) downloads the driver
+        # that matches the *installed* Chrome. webdriver_manager is tried only
+        # as a fallback: its cached driver goes stale as Chrome auto-updates,
+        # and because the old code preferred it and only fell back when
+        # `.install()` itself raised, a stale cache broke scraping outright
+        # with a "only supports Chrome version N" session error.
+        strategies = (
+            ("selenium-manager", self._managed_service),
+            ("webdriver-manager", self._webdriver_manager_service),
+        )
+        for label, build_service in strategies:
+            try:
+                service = build_service(Service)
+            except Exception as exc:  # noqa: BLE001 - reported below
+                failures.append(f"{label}: {exc}")
+                continue
+            if service is None:
+                continue
+            try:
+                return webdriver.Chrome(service=service, options=self._options(Options))
+            except Exception as exc:  # noqa: BLE001 - reported below
+                failures.append(f"{label}: {exc}")
 
-        try:
-            return webdriver.Chrome(service=service, options=options)
-        except Exception as exc:
-            raise ScraperUnavailable(f"Could not start Chrome: {exc}") from exc
+        detail = "; ".join(failures) or "no driver strategy available"
+        raise ScraperUnavailable(f"Could not start Chrome: {detail}")
+
+    @staticmethod
+    def _managed_service(Service):
+        """Let Selenium Manager resolve a matching chromedriver."""
+        return Service()
+
+    @staticmethod
+    def _webdriver_manager_service(Service):
+        from webdriver_manager.chrome import ChromeDriverManager
+
+        return Service(ChromeDriverManager().install())
 
     def scrape_reviews(self, product_url):
         """Return (product_name, reviews) for an Amazon product page.
@@ -71,10 +105,16 @@ class AmazonAnalyzer:
         next button never disappears; this one is bounded and also stops
         when a page yields no new reviews.
         """
-        from selenium.webdriver.common.by import By
+        if not product_url or not str(product_url).strip():
+            raise ValueError("An Amazon product URL is required.")
+
+        # Import before starting the browser: a missing selenium used to raise
+        # a bare ImportError here, bypassing the friendly ScraperUnavailable.
+        _, _, _, By = self._selenium()
 
         driver = self._driver()
         reviews = []
+        seen = set()
         product_name = "Unknown product"
 
         try:
@@ -90,14 +130,22 @@ class AmazonAnalyzer:
                 driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
                 time.sleep(1.5)
 
-                found = [
-                    element.text.strip()
-                    for element in driver.find_elements(By.XPATH, REVIEW_XPATH)
-                    if element.text.strip()
-                ]
-                new = [r for r in found if r not in reviews]
+                found = []
+                for element in driver.find_elements(By.XPATH, REVIEW_XPATH):
+                    try:
+                        text = element.text.strip()
+                    except Exception:
+                        # Element went stale between locate and read.
+                        continue
+                    if text:
+                        found.append(text)
+
+                # Membership against a set, not a list: the old O(n^2) scan
+                # re-compared every review body on every page.
+                new = [r for r in found if r not in seen]
                 if not new:
                     break
+                seen.update(new)
                 reviews.extend(new)
 
                 next_links = driver.find_elements(By.XPATH, NEXT_PAGE_XPATH)
