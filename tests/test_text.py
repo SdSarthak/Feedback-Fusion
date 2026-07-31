@@ -18,6 +18,24 @@ class TestCleanText:
         assert "&quot;" not in cleaned
         assert "&amp;" not in cleaned
 
+    def test_decodes_entities_instead_of_deleting_them(self):
+        assert clean_text("don&#39;t") == "don't"
+        assert clean_text("AT&amp;T") == "AT&T"
+        assert clean_text("she said &quot;hi&quot;") == 'she said "hi"'
+
+    def test_decodes_numeric_and_named_entities(self):
+        assert clean_text("caf&eacute; &#8212; open") == "café — open"
+
+    def test_non_breaking_space_collapses(self):
+        assert clean_text("two&nbsp;&nbsp;words") == "two words"
+
+    def test_tags_are_removed_before_entities_are_decoded(self):
+        """An escaped tag is literal text the user typed, not markup."""
+        assert clean_text("<b>bold</b> and &lt;notatag&gt;") == "bold and <notatag>"
+
+    def test_unicode_is_preserved(self):
+        assert clean_text("很好 😀 muito bom") == "很好 😀 muito bom"
+
     def test_strips_urls(self):
         cleaned = clean_text("check https://example.com/page now")
         assert "example.com" not in cleaned

@@ -1,5 +1,6 @@
 """Text cleaning, word clouds and keyword extraction."""
 
+import html
 import re
 
 from nltk.corpus import stopwords
@@ -7,9 +8,8 @@ from nltk.corpus import stopwords
 from .sentiment import ensure_nltk_data
 
 # YouTube comments arrive as HTML fragments (<br>, &quot;, ...), so strip
-# markup and entities before any of it reaches a word cloud.
+# markup and decode entities before any of it reaches a word cloud.
 _TAG_RE = re.compile(r"<[^>]+>")
-_ENTITY_RE = re.compile(r"&(?:[a-zA-Z]+|#\d+);")
 _URL_RE = re.compile(r"https?://\S+|www\.\S+")
 _WHITESPACE_RE = re.compile(r"\s+")
 
@@ -26,11 +26,19 @@ def get_stopwords():
 
 
 def clean_text(text):
-    """Strip HTML, URLs and excess whitespace from a single string."""
+    """Strip HTML markup and URLs, decode entities, collapse whitespace.
+
+    Entities are *decoded*, not deleted. Deleting them split contractions
+    apart ("don&#39;t" -> "don t"), which destroyed VADER's negation
+    handling: "I don&#39;t like it at all" scored Positive.
+
+    Tags are removed before decoding, because real markup lives in the raw
+    string while an escaped "&lt;3" is literal text the user typed.
+    """
     if not text:
         return ""
     cleaned = _TAG_RE.sub(" ", str(text))
-    cleaned = _ENTITY_RE.sub(" ", cleaned)
+    cleaned = html.unescape(cleaned)
     cleaned = _URL_RE.sub(" ", cleaned)
     return _WHITESPACE_RE.sub(" ", cleaned).strip()
 

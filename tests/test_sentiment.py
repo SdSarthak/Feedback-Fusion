@@ -13,6 +13,18 @@ from feedback_fusion.sentiment import (
     summarize_scores,
     to_dataframe,
 )
+from feedback_fusion.text import clean_text
+
+
+class TestEscapedNegation:
+    """Regression: entity deletion split contractions and flipped the label."""
+
+    @pytest.mark.parametrize(
+        "raw",
+        ["I don&#39;t like it at all", "This isn&#39;t good", "I wouldn&#39;t recommend it"],
+    )
+    def test_escaped_contractions_keep_their_negation(self, raw):
+        assert analyze_text(clean_text(raw)).sentiment == NEGATIVE
 
 
 class TestClassify:
