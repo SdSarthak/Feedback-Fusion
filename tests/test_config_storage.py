@@ -36,6 +36,50 @@ class TestSettings:
         monkeypatch.setenv("STORAGE_ENABLED", raw)
         assert load_settings().storage_enabled is expected
 
+    @pytest.mark.parametrize("raw", ["0", "-5", "-1"])
+    def test_non_positive_max_comments_falls_back(self, monkeypatch, raw):
+        """A cap of 0 or less silently returned zero comments for any video."""
+        monkeypatch.setenv("MAX_COMMENTS", raw)
+        assert load_settings().max_comments == 500
+
+    def test_inverted_thresholds_fall_back(self, monkeypatch):
+        """negative > positive makes Neutral unreachable and labels ordinary
+        neutral feedback Negative."""
+        monkeypatch.setenv("POSITIVE_THRESHOLD", "0.5")
+        monkeypatch.setenv("NEGATIVE_THRESHOLD", "0.9")
+        settings = load_settings()
+        assert settings.positive_threshold == 0.05
+        assert settings.negative_threshold == -0.05
+
+    @pytest.mark.parametrize("raw", ["2.5", "-3", "nan"])
+    def test_out_of_range_thresholds_fall_back(self, monkeypatch, raw):
+        """VADER compound scores live in [-1, 1]."""
+        monkeypatch.setenv("POSITIVE_THRESHOLD", raw)
+        assert load_settings().positive_threshold == 0.05
+
+    def test_equal_thresholds_are_allowed(self, monkeypatch):
+        monkeypatch.setenv("POSITIVE_THRESHOLD", "0.1")
+        monkeypatch.setenv("NEGATIVE_THRESHOLD", "0.1")
+        settings = load_settings()
+        assert settings.positive_threshold == 0.1
+        assert settings.negative_threshold == 0.1
+
+    @pytest.mark.parametrize("name", ["MONGO_URI", "MONGO_DB"])
+    def test_blank_mongo_settings_fall_back(self, monkeypatch, name):
+        """MongoClient("") and client[""] both raise, which would break the
+        storage path that is meant to degrade quietly."""
+        monkeypatch.setenv(name, "   ")
+        settings = load_settings()
+        assert settings.mongo_uri
+        assert settings.mongo_db
+
+    def test_scrape_and_summary_limits_stay_positive(self, monkeypatch):
+        monkeypatch.setenv("SCRAPE_MAX_PAGES", "0")
+        monkeypatch.setenv("SUMMARY_MAX_CHARS", "-100")
+        settings = load_settings()
+        assert settings.scrape_max_pages == 5
+        assert settings.summary_max_chars == 3000
+
     def test_require_youtube_api_key_raises_when_absent(self, monkeypatch):
         monkeypatch.setenv("YOUTUBE_API_KEY", "")
         with pytest.raises(ConfigError, match="YOUTUBE_API_KEY"):

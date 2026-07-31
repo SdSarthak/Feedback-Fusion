@@ -16,25 +16,41 @@ from dotenv import load_dotenv
 load_dotenv(override=False)
 
 
-def _get_int(name, default):
-    """Read an int from the environment, falling back on malformed values."""
+def _get_int(name, default, minimum=None):
+    """Read an int from the environment, falling back on unusable values.
+
+    A value below `minimum` falls back to the default rather than being
+    passed through: MAX_COMMENTS=0 or -5 used to reach the YouTube fetch
+    loop, which then exited immediately and reported "no comments found"
+    for a video that had thousands.
+    """
     raw = os.getenv(name)
     if raw is None or not raw.strip():
         return default
     try:
-        return int(raw)
+        value = int(raw)
     except ValueError:
         return default
+    if minimum is not None and value < minimum:
+        return default
+    return value
 
 
-def _get_float(name, default):
+def _get_float(name, default, minimum=None, maximum=None):
     raw = os.getenv(name)
     if raw is None or not raw.strip():
         return default
     try:
-        return float(raw)
+        value = float(raw)
     except ValueError:
         return default
+    if value != value:  # NaN: every comparison against it is False.
+        return default
+    if minimum is not None and value < minimum:
+        return default
+    if maximum is not None and value > maximum:
+        return default
+    return value
 
 
 def _get_bool(name, default):
@@ -75,20 +91,45 @@ class Settings:
         return self.youtube_api_key
 
 
+DEFAULT_POSITIVE_THRESHOLD = 0.05
+DEFAULT_NEGATIVE_THRESHOLD = -0.05
+
+
 def load_settings():
-    """Build a Settings object from the current environment."""
+    """Build a Settings object from the current environment.
+
+    Out-of-range values fall back to the documented defaults instead of being
+    honoured, because every one of them silently corrupts results rather than
+    failing loudly.
+    """
+    # VADER compound scores are bounded to [-1, 1]; anything outside that
+    # makes a label unreachable.
+    positive = _get_float(
+        "POSITIVE_THRESHOLD", DEFAULT_POSITIVE_THRESHOLD, minimum=-1.0, maximum=1.0
+    )
+    negative = _get_float(
+        "NEGATIVE_THRESHOLD", DEFAULT_NEGATIVE_THRESHOLD, minimum=-1.0, maximum=1.0
+    )
+    if negative > positive:
+        # Inverted thresholds make "Neutral" unreachable and label ordinary
+        # neutral feedback as Negative. Fall back rather than emit nonsense.
+        positive = DEFAULT_POSITIVE_THRESHOLD
+        negative = DEFAULT_NEGATIVE_THRESHOLD
+
     return Settings(
         youtube_api_key=os.getenv("YOUTUBE_API_KEY", "").strip(),
-        mongo_uri=os.getenv("MONGO_URI", "mongodb://localhost:27017/").strip(),
-        mongo_db=os.getenv("MONGO_DB", "feedback_fusion").strip(),
+        # An empty override must not win: MongoClient("") and client[""] both
+        # raise, which would take down storage that is meant to be optional.
+        mongo_uri=os.getenv("MONGO_URI", "").strip() or "mongodb://localhost:27017/",
+        mongo_db=os.getenv("MONGO_DB", "").strip() or "feedback_fusion",
         storage_enabled=_get_bool("STORAGE_ENABLED", True),
-        max_comments=_get_int("MAX_COMMENTS", 500),
-        positive_threshold=_get_float("POSITIVE_THRESHOLD", 0.05),
-        negative_threshold=_get_float("NEGATIVE_THRESHOLD", -0.05),
+        max_comments=_get_int("MAX_COMMENTS", 500, minimum=1),
+        positive_threshold=positive,
+        negative_threshold=negative,
         summarizer_model=os.getenv("SUMMARIZER_MODEL", "sshleifer/distilbart-cnn-12-6").strip(),
-        summary_max_chars=_get_int("SUMMARY_MAX_CHARS", 3000),
+        summary_max_chars=_get_int("SUMMARY_MAX_CHARS", 3000, minimum=1),
         chrome_headless=_get_bool("CHROME_HEADLESS", True),
-        scrape_max_pages=_get_int("SCRAPE_MAX_PAGES", 5),
+        scrape_max_pages=_get_int("SCRAPE_MAX_PAGES", 5, minimum=1),
     )
 
 

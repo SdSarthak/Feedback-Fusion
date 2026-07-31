@@ -253,6 +253,12 @@ def youtube_page():
                     "or out of quota."
                 )
             else:
+                if payload.get("partial_reason"):
+                    st.warning(
+                        f"Only {len(payload['comments'])} comments could be fetched "
+                        f"before the API stopped responding ({payload['partial_reason']}). "
+                        "The results below cover that subset only."
+                    )
                 if payload["results"]:
                     render_analysis(payload, payload["comments"], "comment")
                 else:
