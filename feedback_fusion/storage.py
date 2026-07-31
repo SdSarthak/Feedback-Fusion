@@ -8,11 +8,16 @@ were not persisted.
 """
 
 import re
+import threading
 
 from .config import settings
 
 _client = None
 _client_checked = False
+# Streamlit runs every browser session in its own ScriptRunner thread. Without
+# this lock a second thread could observe `_client_checked` set by a probe that
+# had not finished connecting yet, and be told storage was unreachable.
+_client_lock = threading.Lock()
 
 # Mongo collection names cannot contain '$' or NUL and must be non-empty.
 _UNSAFE_RE = re.compile(r"[^A-Za-z0-9_.-]+")
@@ -56,16 +61,30 @@ def get_client():
     if _client_checked:
         return _client
 
-    _client_checked = True
-    try:
-        from pymongo import MongoClient
-        from pymongo.errors import PyMongoError
+    with _client_lock:
+        # Re-check: another thread may have completed the probe while we
+        # waited. The flag is only set *after* the connection is resolved.
+        if _client_checked:
+            return _client
 
-        candidate = MongoClient(settings.mongo_uri, serverSelectionTimeoutMS=1500)
-        candidate.admin.command("ping")
-        _client = candidate
-    except Exception:
-        _client = None
+        candidate = None
+        try:
+            from pymongo import MongoClient
+
+            candidate = MongoClient(settings.mongo_uri, serverSelectionTimeoutMS=1500)
+            candidate.admin.command("ping")
+            _client = candidate
+        except Exception:
+            if candidate is not None:
+                # Close the half-open client rather than leaking its monitor
+                # threads and sockets on every failed probe.
+                try:
+                    candidate.close()
+                except Exception:
+                    pass
+            _client = None
+        finally:
+            _client_checked = True
     return _client
 
 
@@ -84,19 +103,40 @@ def store_results(results, prefix, identifier, text_field="text"):
         )
 
     collection_name = safe_collection_name(prefix, identifier)
-    records = [
-        r.as_record(text_field) if hasattr(r, "as_record") else dict(r) for r in results
-    ]
+    try:
+        records = [
+            r.as_record(text_field) if hasattr(r, "as_record") else dict(r) for r in results
+        ]
+    except (TypeError, ValueError) as exc:
+        return StorageResult(
+            False, collection_name, reason=f"results are not storable: {exc}"
+        )
+
     try:
         client[settings.mongo_db][collection_name].insert_many(records)
     except Exception as exc:
-        return StorageResult(False, collection_name, reason=str(exc))
+        # Include the type: str(KeyError('x')) is just "'x'", which tells the
+        # user nothing about what actually went wrong.
+        return StorageResult(
+            False, collection_name, reason=f"{type(exc).__name__}: {exc}"
+        )
 
     return StorageResult(True, collection_name, count=len(records))
 
 
+def close_client():
+    """Close the memoised client and release its sockets and monitor threads."""
+    global _client, _client_checked
+    with _client_lock:
+        if _client is not None:
+            try:
+                _client.close()
+            except Exception:
+                pass
+        _client = None
+        _client_checked = False
+
+
 def reset_client_cache():
     """Clear the memoised client. Used by tests."""
-    global _client, _client_checked
-    _client = None
-    _client_checked = False
+    close_client()

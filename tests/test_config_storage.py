@@ -140,3 +140,78 @@ class TestStorage:
         result = store_results(analyze_many(["Great!"]), "comments", "abc")
         assert not result
         assert "MongoDB" in result.reason
+
+    def test_insert_failure_names_the_exception_type(self, monkeypatch):
+        """str(KeyError('x')) is just \"'x'\", which explains nothing."""
+        storage_module = self._with_settings(monkeypatch, storage_enabled=True)
+
+        class _Collection:
+            def insert_many(self, records):
+                raise KeyError("ns")
+
+        monkeypatch.setattr(
+            storage_module, "get_client", lambda: {"feedback_fusion": {"comments_abc": _Collection()}}
+        )
+        result = store_results(analyze_many(["Great!"]), "comments", "abc")
+        assert not result
+        assert "KeyError" in result.reason
+
+    def test_successful_insert_reports_the_count(self, monkeypatch):
+        storage_module = self._with_settings(monkeypatch, storage_enabled=True)
+        written = []
+
+        class _Collection:
+            def insert_many(self, records):
+                written.extend(records)
+
+        monkeypatch.setattr(
+            storage_module, "get_client", lambda: {"feedback_fusion": {"comments_abc": _Collection()}}
+        )
+        result = store_results(analyze_many(["Great!", "Awful!"]), "comments", "abc")
+        assert result
+        assert result.count == 2
+        assert result.collection == "comments_abc"
+        assert len(written) == 2
+        assert written[0]["text"] == "Great!"
+
+    def test_concurrent_probes_agree_on_one_client(self, monkeypatch):
+        """The flag used to be set before the probe finished, so a second
+        thread could be told Mongo was unreachable while it was connecting."""
+        import threading
+        import time
+
+        import feedback_fusion.storage as storage_module
+
+        storage_module.reset_client_cache()
+        built = []
+
+        class _SlowClient:
+            def __init__(self, *args, **kwargs):
+                built.append(1)
+                self.admin = self
+
+            def command(self, _name):
+                time.sleep(0.15)
+                return {"ok": 1}
+
+            def close(self):
+                pass
+
+        fake_pymongo = type("m", (), {"MongoClient": _SlowClient})
+        monkeypatch.setitem(__import__("sys").modules, "pymongo", fake_pymongo)
+
+        results = []
+
+        def probe():
+            results.append(storage_module.get_client())
+
+        threads = [threading.Thread(target=probe) for _ in range(4)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        storage_module.reset_client_cache()
+        assert len(built) == 1, "the client must be probed exactly once"
+        assert all(r is not None for r in results), "no thread may see a half-built client"
+        assert len({id(r) for r in results}) == 1
