@@ -64,18 +64,34 @@ def generate_word_cloud(texts, width=800, height=400, background_color="white"):
         return None
 
 
+# Upper bound on the vocabulary the vectorizer builds. This exists purely to
+# keep memory bounded on very large corpora; it must stay far above `top_n`
+# (see the comment in `top_keywords`).
+VOCABULARY_CAP = 20000
+
+
 def top_keywords(texts, top_n=10):
     """Rank terms by summed TF-IDF weight across the corpus.
 
     Returns a list of (keyword, score) tuples, highest first.
+
+    The vocabulary is deliberately *not* capped at `top_n`. TfidfVectorizer's
+    `max_features` selects terms by raw corpus frequency before any weighting
+    happens, so capping it at `top_n` both dropped genuinely top-scoring terms
+    and changed the IDF denominator, which made the reported scores wrong as
+    well as the ordering.
     """
+    import numpy as np
     from sklearn.feature_extraction.text import TfidfVectorizer
+
+    if top_n is None or top_n <= 0:
+        return []
 
     corpus = clean_many(texts)
     if not corpus:
         return []
 
-    vectorizer = TfidfVectorizer(stop_words="english", max_features=max(top_n, 1))
+    vectorizer = TfidfVectorizer(stop_words="english", max_features=VOCABULARY_CAP)
     try:
         matrix = vectorizer.fit_transform(corpus)
     except ValueError:
@@ -83,8 +99,10 @@ def top_keywords(texts, top_n=10):
         return []
 
     names = vectorizer.get_feature_names_out()
-    scores = matrix.sum(axis=0).A1
-    ranked = sorted(zip(names, scores), key=lambda pair: pair[1], reverse=True)
+    # `.A1` only exists on np.matrix; newer scipy returns a plain ndarray from
+    # sparse `.sum()`, so normalise instead of relying on the matrix type.
+    scores = np.asarray(matrix.sum(axis=0)).ravel()
+    ranked = sorted(zip(names, scores), key=lambda pair: (-pair[1], pair[0]))
     return [(name, round(float(score), 4)) for name, score in ranked[:top_n]]
 
 

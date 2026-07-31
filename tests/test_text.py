@@ -71,6 +71,46 @@ class TestKeywords:
         corpus = ["alpha beta gamma delta epsilon zeta eta theta iota kappa lambda"]
         assert len(top_keywords(corpus, top_n=3)) <= 3
 
+    def test_ranking_is_not_distorted_by_top_n(self):
+        """The top-N terms must not change when more of them are requested.
+
+        Capping the vectorizer vocabulary at `top_n` selected terms by raw
+        frequency *before* weighting, so asking for 3 keywords returned a
+        different (and wrongly scored) set than asking for 20.
+        """
+        corpus = [
+            "delivery delivery delivery",
+            "delivery arrived",
+            "delivery late",
+            "delivery slow",
+            "delivery fine",
+            "battery battery battery battery battery excellent excellent excellent",
+        ]
+        narrow = top_keywords(corpus, top_n=3)
+        wide = top_keywords(corpus, top_n=20)
+        assert narrow == wide[:3]
+
+    def test_scores_are_independent_of_top_n(self):
+        corpus = ["battery life great", "battery drains", "screen bright", "screen cracked"]
+        narrow = dict(top_keywords(corpus, top_n=2))
+        wide = dict(top_keywords(corpus, top_n=10))
+        for term, score in narrow.items():
+            assert score == wide[term]
+
+    def test_rare_high_idf_term_is_not_crowded_out(self):
+        corpus = ["delivery"] * 8 + ["catastrophic catastrophic catastrophic failure"]
+        names = [name for name, _ in top_keywords(corpus, top_n=2)]
+        assert "catastrophic" in names
+
+    def test_non_positive_top_n_returns_empty(self):
+        corpus = ["battery life great", "screen bright"]
+        assert top_keywords(corpus, top_n=0) == []
+        assert top_keywords(corpus, top_n=-3) == []
+
+    def test_ordering_is_deterministic_on_ties(self):
+        corpus = ["alpha bravo", "alpha bravo"]
+        assert top_keywords(corpus, top_n=5) == top_keywords(corpus, top_n=5)
+
     def test_dataframe_shape(self):
         frame = keywords_dataframe(["great camera quality", "camera is great"], top_n=4)
         assert list(frame.columns) == ["Keyword", "TF-IDF Score"]
