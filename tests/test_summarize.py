@@ -1,7 +1,14 @@
 """Tests for the summarization layer and its extractive fallback."""
 
+import pytest
+
 from feedback_fusion import summarization as summarize_module
-from feedback_fusion.summarization import _build_corpus, extractive_summary, summarize
+from feedback_fusion.summarization import (
+    SummaryUnavailable,
+    _build_corpus,
+    extractive_summary,
+    summarize,
+)
 
 PARAGRAPH = [
     "The battery life on this laptop is outstanding and lasts a full working day.",
@@ -82,3 +89,85 @@ class TestSummarize:
         monkeypatch.setattr(summarize_module, "get_summarizer", lambda: blank_summarizer)
         summary = summarize(PARAGRAPH)
         assert summary.strip()
+
+    def test_malformed_model_output_falls_back(self, monkeypatch):
+        for output in ([], [{}], [{"summary_text": None}], "not a list"):
+            monkeypatch.setattr(
+                summarize_module, "get_summarizer", lambda o=output: (lambda *a, **k: o)
+            )
+            assert summarize(PARAGRAPH).strip()
+
+    def test_fallback_does_not_reclean_the_corpus(self, monkeypatch):
+        """The corpus is cleaned once in summarize and reused by the fallback."""
+        calls = []
+        original = summarize_module.clean_many
+
+        def counting_clean_many(texts):
+            calls.append(1)
+            return original(texts)
+
+        monkeypatch.setattr(summarize_module, "clean_many", counting_clean_many)
+        monkeypatch.setattr(summarize_module, "get_summarizer", lambda: None)
+        summarize(PARAGRAPH)
+        assert len(calls) == 1
+
+    def test_model_receives_bounded_lengths(self, monkeypatch):
+        seen = {}
+
+        def recording_summarizer(text, **kwargs):
+            seen.update(kwargs)
+            return [{"summary_text": "ok"}]
+
+        monkeypatch.setattr(
+            summarize_module, "get_summarizer", lambda: recording_summarizer
+        )
+        summarize(["short feedback here"], max_length=250, min_length=60)
+        assert seen["min_length"] >= 10
+        assert seen["max_length"] > seen["min_length"]
+
+    def test_no_backend_and_no_fallback_raises(self, monkeypatch):
+        monkeypatch.setattr(summarize_module, "get_summarizer", lambda: None)
+        with pytest.raises(SummaryUnavailable):
+            summarize(PARAGRAPH, allow_fallback=False)
+
+    def test_summarizer_is_built_once_under_concurrency(self, monkeypatch):
+        """Each pipeline is ~1 GB; two threads must not build two of them."""
+        import threading
+        import time
+
+        builds = []
+
+        def slow_pipeline(*args, **kwargs):
+            builds.append(1)
+            time.sleep(0.15)
+            return lambda text, **kw: [{"summary_text": "ok"}]
+
+        monkeypatch.setattr(summarize_module, "_summarizer", None)
+        monkeypatch.setattr(summarize_module, "_summarizer_failed", False)
+        monkeypatch.setitem(
+            __import__("sys").modules,
+            "transformers",
+            type("m", (), {"pipeline": staticmethod(slow_pipeline)}),
+        )
+
+        threads = [
+            threading.Thread(target=summarize_module.get_summarizer) for _ in range(4)
+        ]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        summarize_module._summarizer = None
+        summarize_module._summarizer_failed = False
+        assert len(builds) == 1
+
+
+class TestExtractiveGuards:
+    def test_non_positive_sentence_count_returns_empty(self):
+        assert extractive_summary(PARAGRAPH, max_sentences=0) == ""
+        assert extractive_summary(PARAGRAPH, max_sentences=-2) == ""
+
+    def test_only_stopwords_still_returns_text(self):
+        texts = ["the and of. a is the. it was so."]
+        assert extractive_summary(texts, max_sentences=1)

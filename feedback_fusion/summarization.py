@@ -7,12 +7,17 @@ do not have them.
 
 import heapq
 import re
+import threading
 
 from .config import settings
 from .text import clean_many, get_stopwords
 
 _summarizer = None
 _summarizer_failed = False
+# The distilbart pipeline is ~1 GB of weights. Streamlit serves each browser
+# session on its own thread, so without this lock two concurrent requests both
+# build a pipeline and the process carries two copies of the model.
+_summarizer_lock = threading.Lock()
 
 _SENTENCE_RE = re.compile(r"(?<=[.!?])\s+")
 _WORD_RE = re.compile(r"[a-zA-Z']+")
@@ -42,23 +47,34 @@ def get_summarizer():
     global _summarizer, _summarizer_failed
     if _summarizer is not None or _summarizer_failed:
         return _summarizer
-    try:
-        from transformers import pipeline
 
-        _summarizer = pipeline("summarization", model=settings.summarizer_model, device=-1)
-    except Exception:
-        _summarizer_failed = True
-        _summarizer = None
+    with _summarizer_lock:
+        # Another thread may have finished building it while we waited.
+        if _summarizer is not None or _summarizer_failed:
+            return _summarizer
+        try:
+            from transformers import pipeline
+
+            _summarizer = pipeline(
+                "summarization", model=settings.summarizer_model, device=-1
+            )
+        except Exception:
+            _summarizer_failed = True
+            _summarizer = None
     return _summarizer
 
 
-def extractive_summary(texts, max_sentences=5):
+def extractive_summary(texts, max_sentences=5, _corpus=None):
     """Frequency-scored extractive summary; pure Python, no model needed.
 
     Scores each sentence by the summed frequency of its non-stopword terms,
     then returns the best sentences in their original order.
     """
-    corpus = _build_corpus(texts)
+    if max_sentences is None or max_sentences < 1:
+        return ""
+    # `summarize` has already cleaned and truncated the corpus; rebuilding it
+    # here meant cleaning the entire feedback set a second time.
+    corpus = _build_corpus(texts) if _corpus is None else _corpus
     if not corpus:
         return ""
 
@@ -127,4 +143,4 @@ def summarize(texts, max_length=250, min_length=60, allow_fallback=True):
             "No summarization backend available. Install the optional extras "
             "with: pip install -r requirements-ml.txt"
         )
-    return extractive_summary(texts)
+    return extractive_summary(texts, _corpus=corpus)
