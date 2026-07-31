@@ -51,6 +51,42 @@ class TestLoadFeedbackFrame:
         with pytest.raises(FeedbackFileError):
             load_feedback_frame(json_upload([]))
 
+    def test_same_upload_can_be_read_twice(self):
+        """Streamlit reuses one UploadedFile across reruns, so the reader must
+        rewind it. Without that the second read hit an exhausted buffer."""
+        buffer = csv_upload()
+        assert len(load_feedback_frame(buffer)) == 4
+        assert len(load_feedback_frame(buffer)) == 4
+
+    def test_rewinds_a_partially_consumed_buffer(self):
+        buffer = csv_upload()
+        buffer.read(5)
+        assert len(load_feedback_frame(buffer)) == 4
+
+    def test_json_upload_can_be_read_twice(self):
+        buffer = json_upload()
+        assert len(load_feedback_frame(buffer)) == 4
+        assert len(load_feedback_frame(buffer)) == 4
+
+    def test_unsupported_extension_is_rejected_before_reading(self):
+        """An unreadable stream with a bad name must still give the type error."""
+        buffer = io.BytesIO(b"nope")
+        buffer.name = "notes.txt"
+        buffer.close()
+        with pytest.raises(FeedbackFileError, match="Unsupported file type"):
+            load_feedback_frame(buffer)
+
+    def test_malformed_csv_raises_feedback_error(self):
+        buffer = io.BytesIO(b"")
+        buffer.name = "broken.csv"
+        with pytest.raises(FeedbackFileError):
+            load_feedback_frame(buffer)
+
+    def test_unicode_content_survives(self):
+        rows = [{"feedback": "Sehr gut — überzeugend! 太好了 🎉", "category": "Kunde"}]
+        frame = load_feedback_frame(csv_upload(rows))
+        assert "太好了" in frame["feedback"].iloc[0]
+
 
 class TestColumnResolution:
     def test_finds_standard_columns(self):
@@ -104,3 +140,61 @@ class TestAnalyzeFrame:
         frame = pd.DataFrame({"feedback": ["Great!", None, "Awful!"]})
         payload = analyze_frame(frame, "feedback")
         assert payload["stats"]["total"] == 2
+
+    def test_category_totals_add_up_to_the_overall_total(self):
+        frame, feedback_col, category_col = load_feedback(csv_upload())
+        payload = analyze_frame(frame, feedback_col, category_col)
+        per_category = sum(s["total"] for s in payload["by_category"].values())
+        assert per_category == payload["stats"]["total"]
+
+    def test_rows_with_a_missing_category_are_excluded_from_the_breakdown(self):
+        frame = pd.DataFrame(
+            {
+                "feedback": ["Great!", "Awful!", "Fine."],
+                "category": ["Employee", None, "Employee"],
+            }
+        )
+        payload = analyze_frame(frame, "feedback", "category")
+        assert payload["stats"]["total"] == 3
+        assert set(payload["by_category"]) == {"Employee"}
+        assert payload["by_category"]["Employee"]["total"] == 2
+
+    def test_blank_feedback_rows_do_not_shift_category_alignment(self):
+        """Rows dropped for empty text must not misalign the category labels."""
+        frame = pd.DataFrame(
+            {
+                "feedback": ["   ", "I love this team.", None, "Terrible experience."],
+                "category": ["Employee", "Employee", "Customer", "Customer"],
+            }
+        )
+        payload = analyze_frame(frame, "feedback", "category")
+        assert payload["stats"]["total"] == 2
+        assert payload["by_category"]["Employee"]["counts"]["Positive"] == 1
+        assert payload["by_category"]["Customer"]["counts"]["Negative"] == 1
+
+    def test_handles_a_duplicated_index(self):
+        frame = pd.DataFrame(
+            {"feedback": ["Great!", "Awful!"], "category": ["Employee", "Customer"]},
+            index=[0, 0],
+        )
+        payload = analyze_frame(frame, "feedback", "category")
+        assert payload["stats"]["total"] == 2
+        assert set(payload["by_category"]) == {"Employee", "Customer"}
+
+    def test_all_blank_feedback_yields_empty_payload(self):
+        frame = pd.DataFrame({"feedback": ["", "   ", None]})
+        payload = analyze_frame(frame, "feedback")
+        assert payload["texts"] == []
+        assert payload["results"] == []
+        assert payload["stats"]["total"] == 0
+        assert payload["keywords"] == []
+
+    def test_missing_category_column_is_ignored(self):
+        frame = pd.DataFrame({"feedback": ["Great!"]})
+        payload = analyze_frame(frame, "feedback", "not_a_column")
+        assert payload["by_category"] == {}
+
+    def test_numeric_categories_are_stringified(self):
+        frame = pd.DataFrame({"feedback": ["Great!", "Awful!"], "category": [1, 2]})
+        payload = analyze_frame(frame, "feedback", "category")
+        assert set(payload["by_category"]) == {"1", "2"}
